@@ -136,7 +136,7 @@ export default function SignUpPage() {
                     </Button>
                 </form>
 
-                <SocialLogin />
+                <SocialLogin mode="signup" />
             </Card>
         </div>
     );

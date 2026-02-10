@@ -4,7 +4,11 @@ import { createClient } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Apple } from 'lucide-react';
 
-export function SocialLogin() {
+interface SocialLoginProps {
+    mode?: 'login' | 'signup';
+}
+
+export function SocialLogin({ mode = 'login' }: SocialLoginProps) {
     const supabase = createClient();
 
     const handleSocialLogin = async (provider: 'google' | 'kakao' | 'apple') => {
@@ -20,6 +24,8 @@ export function SocialLogin() {
             alert('로그인에 실패했습니다. 다시 시도해주세요.');
         }
     };
+
+    const appleButtonText = mode === 'signup' ? 'Apple로 등록' : 'Apple로 로그인';
 
     return (
         <div className="flex flex-col gap-3 w-full">
@@ -80,8 +86,8 @@ export function SocialLogin() {
                 onClick={() => handleSocialLogin('apple')}
                 className="w-full bg-white hover:bg-white/90 text-black h-11 font-medium relative font-['SF_Pro_Text','-apple-system','BlinkMacSystemFont','Segoe_UI','Roboto','Helvetica_Neue','Arial','sans-serif'] tracking-tight"
             >
-                <Apple className="w-[18px] h-[18px] absolute left-4 mb-0.5" fill="currentColor" />
-                <span className="text-[15px] font-semibold">Apple로 계속하기</span>
+                <Apple className="w-5 h-5 absolute left-4 mb-0.5" fill="currentColor" />
+                <span className="text-[17px] font-semibold">{appleButtonText}</span>
             </Button>
         </div>
     );

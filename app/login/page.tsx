@@ -85,7 +85,7 @@ export default function LoginPage() {
                     </Button>
                 </form>
 
-                <SocialLogin />
+                <SocialLogin mode="login" />
 
                 <div className="text-center text-xs text-gray-500 space-y-2">
                     <p>
