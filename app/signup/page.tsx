@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { SocialLogin } from '@/components/auth/SocialLogin';
 
 export default function SignUpPage() {
     const [email, setEmail] = useState('');
@@ -134,6 +135,8 @@ export default function SignUpPage() {
                         {loading ? '가입 중...' : '회원가입'}
                     </Button>
                 </form>
+
+                <SocialLogin />
             </Card>
         </div>
     );

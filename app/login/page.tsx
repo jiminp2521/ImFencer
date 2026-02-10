@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Sword } from 'lucide-react';
 import Link from 'next/link';
+import { SocialLogin } from '@/components/auth/SocialLogin';
 
 export default function LoginPage() {
     const [email, setEmail] = useState('');
@@ -83,6 +84,8 @@ export default function LoginPage() {
                         {loading ? '로그인 중...' : '로그인'}
                     </Button>
                 </form>
+
+                <SocialLogin />
 
                 <div className="text-center text-xs text-gray-500 space-y-2">
                     <p>
