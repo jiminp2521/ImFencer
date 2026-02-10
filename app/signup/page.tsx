@@ -48,7 +48,13 @@ export default function SignUpPage() {
         });
 
         if (authError) {
-            setError(authError.message);
+            let errorMsg = authError.message;
+            if (errorMsg.includes('limit exceeded') || errorMsg.includes('rate limit')) {
+                errorMsg = "너무 많은 가입 요청이 있었습니다. 잠시 후 다시 시도해주세요.";
+            } else if (errorMsg.includes('User already registered') || errorMsg.includes('assigned to')) {
+                errorMsg = "이미 가입된 이메일입니다. 로그인해주세요.";
+            }
+            setError(errorMsg);
             setLoading(false);
             return;
         }
