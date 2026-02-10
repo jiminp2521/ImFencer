@@ -11,91 +11,55 @@ import Link from 'next/link';
 import { SocialLogin } from '@/components/auth/SocialLogin';
 
 export default function LoginPage() {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [logoTapCount, setLogoTapCount] = useState(0);
     const router = useRouter();
     const supabase = createClient();
 
-    const handleLogin = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
-        setError(null);
+    const handleLogoClick = async () => {
+        const newCount = logoTapCount + 1;
+        setLogoTapCount(newCount);
 
-        const { error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-        });
+        if (newCount === 7) {
+            const confirmTest = confirm("테스트 계정으로 로그인하시겠습니까?");
+            if (confirmTest) {
+                setLoading(true);
+                // Hardcoded test credentials for App Store Review
+                // User must create this account in Supabase Authentication
+                const { error } = await supabase.auth.signInWithPassword({
+                    email: 'test@imfencer.com',
+                    password: 'testuser1234!',
+                });
 
-        if (error) {
-            setError(error.message === "Invalid login credentials" ? "이메일 또는 비밀번호가 올바르지 않습니다." : error.message);
-            setLoading(false);
-        } else {
-            router.push('/'); // Redirect to home on success
-            router.refresh();
+                if (error) {
+                    alert('테스트 계정 로그인 실패: ' + error.message + '\n(Supabase에서 test@imfencer.com / testuser1234! 계정을 생성해주세요)');
+                    setLoading(false);
+                    setLogoTapCount(0);
+                } else {
+                    router.push('/');
+                    router.refresh();
+                }
+            } else {
+                setLogoTapCount(0);
+            }
         }
     };
 
     return (
         <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-black">
-            <div className="mb-8 flex flex-col items-center gap-4">
+            <div className="mb-12 flex flex-col items-center gap-6">
                 {/* Logo Image */}
-                <div className="relative w-48 h-16">
+                <div
+                    className="relative w-48 h-16 cursor-pointer active:scale-95 transition-transform"
+                    onClick={handleLogoClick}
+                >
                     <img src="/app-logo.png" alt="ImFencer Logo" className="object-contain w-full h-full" />
                 </div>
                 <p className="text-gray-400 text-sm">프리미엄 펜싱 커뮤니티에 오신 것을 환영합니다</p>
             </div>
 
-            <Card className="w-full max-w-sm p-6 bg-gray-900 border-gray-800 space-y-3">
-                <form onSubmit={handleLogin} className="space-y-4">
-                    <div className="space-y-2">
-                        <Input
-                            type="email"
-                            placeholder="이메일"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            className="bg-black border-gray-800 text-white placeholder:text-gray-500"
-                            required
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Input
-                            type="password"
-                            placeholder="비밀번호"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className="bg-black border-gray-800 text-white placeholder:text-gray-500"
-                            required
-                        />
-                    </div>
-
-                    {error && (
-                        <div className="text-red-500 text-xs text-center">
-                            {error}
-                        </div>
-                    )}
-
-                    <Button
-                        type="submit"
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white h-12 rounded-xl text-[15px] font-semibold"
-                        disabled={loading}
-                    >
-                        {loading ? '로그인 중...' : '로그인'}
-                    </Button>
-                </form>
-
+            <Card className="w-full max-w-sm p-6 bg-gray-900 border-gray-800 space-y-6">
                 <SocialLogin mode="login" />
-
-                <div className="flex justify-center items-center gap-4 text-xs text-gray-500 mt-4">
-                    <Link href="/signup" className="hover:text-white transition-colors">
-                        회원가입
-                    </Link>
-                    <span className="h-3 w-px bg-gray-700" />
-                    <Link href="/reset-password" className="hover:text-white transition-colors">
-                        비밀번호 찾기
-                    </Link>
-                </div>
             </Card>
         </div>
     );
