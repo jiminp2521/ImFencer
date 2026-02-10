@@ -146,28 +146,34 @@ export default function SignUpPage() {
                         />
                     </div>
                     <div className="space-y-2">
-                        <Select value={weaponType} onValueChange={setWeaponType}>
-                            <SelectTrigger className="bg-black border-gray-800 text-white">
-                                <SelectValue placeholder="종목 선택" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-gray-900 border-gray-800 text-white">
-                                <SelectItem value="Fleuret">플뢰레</SelectItem>
-                                <SelectItem value="Epee">에페</SelectItem>
-                                <SelectItem value="Sabre">사브르</SelectItem>
-                            </SelectContent>
-                        </Select>
+                        <div className="flex h-10 w-full items-center justify-between rounded-md border border-gray-800 bg-black px-3 py-2 text-sm">
+                            <span className="text-gray-500">종목 선택</span>
+                            <Select value={weaponType} onValueChange={setWeaponType}>
+                                <SelectTrigger className="w-[120px] border-none bg-transparent p-0 h-auto text-white focus:ring-0 focus:ring-offset-0 shadow-none justify-end gap-2 hover:bg-transparent data-[state=open]:bg-transparent">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="bg-gray-900 border-gray-800 text-white">
+                                    <SelectItem value="Fleuret">플뢰레</SelectItem>
+                                    <SelectItem value="Epee">에페</SelectItem>
+                                    <SelectItem value="Sabre">사브르</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
                     <div className="space-y-2">
-                        <Select value={userType} onValueChange={setUserType}>
-                            <SelectTrigger className="bg-black border-gray-800 text-white">
-                                <SelectValue placeholder="선수 구분" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-gray-900 border-gray-800 text-white">
-                                <SelectItem value="동호인">동호인</SelectItem>
-                                <SelectItem value="엘리트">엘리트</SelectItem>
-                                <SelectItem value="코치 및 감독">코치 및 감독</SelectItem>
-                            </SelectContent>
-                        </Select>
+                        <div className="flex h-10 w-full items-center justify-between rounded-md border border-gray-800 bg-black px-3 py-2 text-sm">
+                            <span className="text-gray-500">선수 구분</span>
+                            <Select value={userType} onValueChange={setUserType}>
+                                <SelectTrigger className="w-[120px] border-none bg-transparent p-0 h-auto text-white focus:ring-0 focus:ring-offset-0 shadow-none justify-end gap-2 hover:bg-transparent data-[state=open]:bg-transparent">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="bg-gray-900 border-gray-800 text-white">
+                                    <SelectItem value="동호인">동호인</SelectItem>
+                                    <SelectItem value="엘리트">엘리트</SelectItem>
+                                    <SelectItem value="코치 및 감독">코치 및 감독</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
 
                     {error && (
