@@ -70,3 +70,4 @@ export default async function Home() {
   );
 }
 // Trigger deployment Tue Feb 10 10:24:10 KST 2026
+// Helper triggers webhook restoration
