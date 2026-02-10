@@ -73,15 +73,15 @@ export function SocialLogin() {
                 Google로 시작하기
             </Button>
 
-            {/* Apple Login */}
+            {/* Apple Login - Apple HIG Compliant (White) */}
             <Button
                 type="button"
                 variant="ghost"
                 onClick={() => handleSocialLogin('apple')}
-                className="w-full bg-white hover:bg-gray-100 text-black h-11 font-medium relative"
+                className="w-full bg-white hover:bg-white/90 text-black h-11 font-medium relative font-['SF_Pro_Text','-apple-system','BlinkMacSystemFont','Segoe_UI','Roboto','Helvetica_Neue','Arial','sans-serif'] tracking-tight"
             >
-                <Apple className="w-5 h-5 absolute left-4" fill="currentColor" />
-                Apple로 시작하기
+                <Apple className="w-[18px] h-[18px] absolute left-4 mb-0.5" fill="currentColor" />
+                <span className="text-[15px] font-semibold">Apple로 계속하기</span>
             </Button>
         </div>
     );
