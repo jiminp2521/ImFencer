@@ -35,9 +35,9 @@ export function SocialLogin() {
             {/* Kakao Login */}
             <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
                 onClick={() => handleSocialLogin('kakao')}
-                className="w-full bg-[#FEE500] hover:bg-[#FEE500]/90 text-black border-none h-11 font-medium relative"
+                className="w-full bg-[#FEE500] hover:bg-[#FEE500]/90 text-black h-11 font-medium relative"
             >
                 <svg className="w-5 h-5 absolute left-4" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12 3C5.373 3 0 7.03 0 12c0 3.197 2.23 6.026 5.617 7.643-.207.755-.748 2.733-.855 3.132-.132.486.177.478.373.348.156-.104 2.47-1.68 3.442-2.35 1.08.307 2.23.473 3.423.473 6.627 0 12-4.03 12-9s-5.373-9-12-9z" />
@@ -48,9 +48,9 @@ export function SocialLogin() {
             {/* Google Login */}
             <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
                 onClick={() => handleSocialLogin('google')}
-                className="w-full bg-white hover:bg-gray-100 text-black border-none h-11 font-medium relative"
+                className="w-full bg-white hover:bg-gray-100 text-black h-11 font-medium relative"
             >
                 <svg className="w-5 h-5 absolute left-4" viewBox="0 0 24 24">
                     <path
@@ -76,9 +76,9 @@ export function SocialLogin() {
             {/* Apple Login */}
             <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
                 onClick={() => handleSocialLogin('apple')}
-                className="w-full bg-white hover:bg-gray-100 text-black border-none h-11 font-medium relative"
+                className="w-full bg-white hover:bg-gray-100 text-black h-11 font-medium relative"
             >
                 <Apple className="w-5 h-5 absolute left-4" fill="currentColor" />
                 Apple로 시작하기
