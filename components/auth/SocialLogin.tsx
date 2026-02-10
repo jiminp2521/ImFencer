@@ -24,7 +24,9 @@ export function SocialLogin({ mode = 'login' }: SocialLoginProps) {
         }
     };
 
-    const appleButtonText = mode === 'signup' ? 'Apple로 등록' : 'Apple로 로그인';
+    const isSignup = mode === 'signup';
+    const actionText = isSignup ? '회원가입하기' : '로그인하기';
+    const appleText = isSignup ? 'Apple로 등록' : 'Apple로 로그인';
 
     return (
         <div className="flex flex-col gap-3 w-full">
@@ -49,7 +51,7 @@ export function SocialLogin({ mode = 'login' }: SocialLoginProps) {
                         <path d="M12 3C5.373 3 0 7.03 0 12c0 3.197 2.23 6.026 5.617 7.643-.207.755-.748 2.733-.855 3.132-.132.486.177.478.373.348.156-.104 2.47-1.68 3.442-2.35 1.08.307 2.23.473 3.423.473 6.627 0 12-4.03 12-9s-5.373-9-12-9z" />
                     </svg>
                 </div>
-                <span className="text-[15px] font-semibold">카카오로 로그인하기</span>
+                <span className="text-[15px] font-semibold">카카오로 {actionText}</span>
             </Button>
 
             {/* Google Login */}
@@ -79,7 +81,7 @@ export function SocialLogin({ mode = 'login' }: SocialLoginProps) {
                         />
                     </svg>
                 </div>
-                <span className="text-[15px] font-semibold">Google로 로그인하기</span>
+                <span className="text-[15px] font-semibold">Google로 {actionText}</span>
             </Button>
 
             {/* Apple Login - Black Style */}
@@ -92,7 +94,7 @@ export function SocialLogin({ mode = 'login' }: SocialLoginProps) {
                 <div className="absolute left-5 w-5 h-5 flex items-center justify-center">
                     <img src="/apple-logo.png" alt="Apple" className="w-full h-full object-contain invert" />
                 </div>
-                <span className="text-[15px] font-semibold">{appleButtonText}</span>
+                <span className="text-[15px] font-semibold">{appleText}</span>
             </Button>
         </div>
     );
