@@ -47,7 +47,7 @@ export default function LoginPage() {
                 <p className="text-gray-400 text-sm">프리미엄 펜싱 커뮤니티에 오신 것을 환영합니다</p>
             </div>
 
-            <Card className="w-full max-w-sm p-6 bg-gray-900 border-gray-800 space-y-4">
+            <Card className="w-full max-w-sm p-6 bg-gray-900 border-gray-800 space-y-3">
                 <form onSubmit={handleLogin} className="space-y-4">
                     <div className="space-y-2">
                         <Input
@@ -87,13 +87,14 @@ export default function LoginPage() {
 
                 <SocialLogin mode="login" />
 
-                <div className="text-center text-xs text-gray-500 space-y-2">
-                    <p>
-                        계정이 없으신가요?{' '}
-                        <Link href="/signup" className="text-blue-500 hover:underline">
-                            회원가입
-                        </Link>
-                    </p>
+                <div className="flex justify-center items-center gap-4 text-xs text-gray-500 mt-4">
+                    <Link href="/signup" className="hover:text-white transition-colors">
+                        회원가입
+                    </Link>
+                    <span className="h-3 w-px bg-gray-700" />
+                    <Link href="/reset-password" className="hover:text-white transition-colors">
+                        비밀번호 찾기
+                    </Link>
                 </div>
             </Card>
         </div>
