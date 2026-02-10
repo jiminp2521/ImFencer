@@ -2,7 +2,6 @@
 
 import { createClient } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
-import { Apple } from 'lucide-react';
 
 interface SocialLoginProps {
     mode?: 'login' | 'signup';
@@ -43,12 +42,12 @@ export function SocialLogin({ mode = 'login' }: SocialLoginProps) {
                 type="button"
                 variant="ghost"
                 onClick={() => handleSocialLogin('kakao')}
-                className="w-full bg-[#FEE500] hover:bg-[#FEE500]/90 text-black h-11 font-medium relative"
+                className="w-full bg-[#FEE500] hover:bg-[#FEE500]/90 text-black h-11 relative"
             >
                 <svg className="w-5 h-5 absolute left-4" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12 3C5.373 3 0 7.03 0 12c0 3.197 2.23 6.026 5.617 7.643-.207.755-.748 2.733-.855 3.132-.132.486.177.478.373.348.156-.104 2.47-1.68 3.442-2.35 1.08.307 2.23.473 3.423.473 6.627 0 12-4.03 12-9s-5.373-9-12-9z" />
                 </svg>
-                카카오로 시작하기
+                <span className="text-[17px] font-medium">카카오로 시작하기</span>
             </Button>
 
             {/* Google Login */}
@@ -56,7 +55,7 @@ export function SocialLogin({ mode = 'login' }: SocialLoginProps) {
                 type="button"
                 variant="ghost"
                 onClick={() => handleSocialLogin('google')}
-                className="w-full bg-white hover:bg-gray-100 text-black h-11 font-medium relative"
+                className="w-full bg-white hover:bg-gray-100 text-black h-11 relative"
             >
                 <svg className="w-5 h-5 absolute left-4" viewBox="0 0 24 24">
                     <path
@@ -76,7 +75,7 @@ export function SocialLogin({ mode = 'login' }: SocialLoginProps) {
                         fill="#EA4335"
                     />
                 </svg>
-                Google로 시작하기
+                <span className="text-[17px] font-medium">Google로 시작하기</span>
             </Button>
 
             {/* Apple Login - Apple HIG Compliant (White) */}
@@ -84,10 +83,12 @@ export function SocialLogin({ mode = 'login' }: SocialLoginProps) {
                 type="button"
                 variant="ghost"
                 onClick={() => handleSocialLogin('apple')}
-                className="w-full bg-white hover:bg-white/90 text-black h-11 font-medium relative font-['SF_Pro_Text','-apple-system','BlinkMacSystemFont','Segoe_UI','Roboto','Helvetica_Neue','Arial','sans-serif'] tracking-tight"
+                className="w-full bg-white hover:bg-white/90 text-black h-11 relative"
             >
-                <Apple className="w-5 h-5 absolute left-4 mb-0.5" fill="currentColor" />
-                <span className="text-[17px] font-semibold">{appleButtonText}</span>
+                <div className="absolute left-4 w-5 h-5 flex items-center justify-center">
+                    <img src="/apple-logo.png" alt="Apple" className="w-full h-full object-contain" />
+                </div>
+                <span className="text-[17px] font-medium">{appleButtonText}</span>
             </Button>
         </div>
     );
