@@ -129,7 +129,7 @@ export default function SignUpPage() {
 
                     <Button
                         type="submit"
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white h-12 rounded-xl text-[15px] font-semibold"
                         disabled={loading}
                     >
                         {loading ? '가입 중...' : '회원가입'}
