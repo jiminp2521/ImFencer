@@ -28,7 +28,7 @@ export default function LoginPage() {
         });
 
         if (error) {
-            setError(error.message);
+            setError(error.message === "Invalid login credentials" ? "이메일 또는 비밀번호가 올바르지 않습니다." : error.message);
             setLoading(false);
         } else {
             router.push('/'); // Redirect to home on success
@@ -38,12 +38,12 @@ export default function LoginPage() {
 
     return (
         <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-black">
-            <div className="mb-8 flex flex-col items-center gap-2">
-                <Sword className="w-12 h-12 text-blue-500" />
-                <h1 className="text-2xl font-bold text-white">
-                    <span className="text-blue-500">Im</span>Fencer
-                </h1>
-                <p className="text-gray-400 text-sm">Join the Premium Fencing Community</p>
+            <div className="mb-8 flex flex-col items-center gap-4">
+                {/* Logo Image */}
+                <div className="relative w-48 h-16">
+                    <img src="/logo.png" alt="ImFencer Logo" className="object-contain w-full h-full" />
+                </div>
+                <p className="text-gray-400 text-sm">프리미엄 펜싱 커뮤니티에 오신 것을 환영합니다</p>
             </div>
 
             <Card className="w-full max-w-sm p-6 bg-gray-900 border-gray-800 space-y-4">
@@ -51,7 +51,7 @@ export default function LoginPage() {
                     <div className="space-y-2">
                         <Input
                             type="email"
-                            placeholder="Email"
+                            placeholder="이메일"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             className="bg-black border-gray-800 text-white placeholder:text-gray-500"
@@ -61,7 +61,7 @@ export default function LoginPage() {
                     <div className="space-y-2">
                         <Input
                             type="password"
-                            placeholder="Password"
+                            placeholder="비밀번호"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             className="bg-black border-gray-800 text-white placeholder:text-gray-500"
@@ -80,16 +80,15 @@ export default function LoginPage() {
                         className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                         disabled={loading}
                     >
-                        {loading ? 'Logging in...' : 'Log In'}
+                        {loading ? '로그인 중...' : '로그인'}
                     </Button>
                 </form>
 
                 <div className="text-center text-xs text-gray-500 space-y-2">
-                    <p>Test Account from Supabase Dashboard</p>
                     <p>
-                        Don't have an account?{' '}
+                        계정이 없으신가요?{' '}
                         <Link href="/signup" className="text-blue-500 hover:underline">
-                            Sign Up
+                            회원가입
                         </Link>
                     </p>
                 </div>

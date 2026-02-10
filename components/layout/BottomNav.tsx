@@ -10,27 +10,27 @@ export function BottomNav() {
 
     const tabs = [
         {
-            name: 'Community',
+            name: '커뮤니티',
             href: '/',
             icon: Home,
         },
         {
-            name: 'Fencing',
+            name: '펜싱',
             href: '/fencing',
             icon: Sword,
         },
         {
-            name: 'Market',
+            name: '마켓',
             href: '/market',
             icon: ShoppingBag,
         },
         {
-            name: 'Chat',
+            name: '채팅',
             href: '/chat',
             icon: MessageCircle,
         },
         {
-            name: 'My Page',
+            name: '마이',
             href: '/profile',
             icon: User,
         },

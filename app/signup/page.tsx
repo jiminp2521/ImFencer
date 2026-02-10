@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { Sword, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
 export default function SignUpPage() {
@@ -29,7 +29,7 @@ export default function SignUpPage() {
             password,
             options: {
                 data: {
-                    username: username, // Save metadata for later if needed
+                    username: username,
                 }
             }
         });
@@ -41,21 +41,18 @@ export default function SignUpPage() {
         }
 
         if (authData.user) {
-            // 2. Create Profile in 'profiles' table
-            // Note: Ideally this should be handled by a Supabase Trigger, 
-            // but for now we do it client-side for immediate feedback loop in this prototype.
+            // 2. Create Profile
             const { error: profileError } = await supabase
                 .from('profiles')
                 .insert({
                     id: authData.user.id,
                     username: username,
-                    weapon_type: 'Fleuret', // Default, user can change later
+                    weapon_type: 'Fleuret',
                     tier: 'Bronze'
                 });
 
             if (profileError) {
                 console.error("Profile creation failed:", profileError);
-                // Verify if trigger already handled it or if it's a real error
                 if (!profileError.message.includes('duplicate key')) {
                     setError("계정은 생성되었으나 프로필 설정에 실패했습니다.");
                     setLoading(false);
@@ -65,6 +62,10 @@ export default function SignUpPage() {
 
             alert('회원가입이 완료되었습니다! 로그인을 진행해주세요.');
             router.push('/login');
+        } else {
+            // In case email confirmation is enabled (usually off for tests)
+            alert('인증 메일을 확인해주세요.');
+            setLoading(false);
         }
     };
 
@@ -72,16 +73,16 @@ export default function SignUpPage() {
         <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-black">
             <div className="absolute top-4 left-4">
                 <Link href="/login" className="flex items-center text-gray-400 hover:text-white">
-                    <ArrowLeft className="w-4 h-4 mr-1" /> Back
+                    <ArrowLeft className="w-4 h-4 mr-1" /> 뒤로가기
                 </Link>
             </div>
 
-            <div className="mb-8 flex flex-col items-center gap-2">
-                <Sword className="w-12 h-12 text-blue-500" />
-                <h1 className="text-2xl font-bold text-white">
-                    <span className="text-blue-500">Im</span>Fencer
-                </h1>
-                <p className="text-gray-400 text-sm">Create your account</p>
+            <div className="mb-8 flex flex-col items-center gap-4">
+                {/* Logo Image */}
+                <div className="relative w-40 h-12">
+                    <img src="/logo.png" alt="ImFencer Logo" className="object-contain w-full h-full" />
+                </div>
+                <p className="text-gray-400 text-sm">계정을 생성하고 시작하세요</p>
             </div>
 
             <Card className="w-full max-w-sm p-6 bg-gray-900 border-gray-800 space-y-4">
@@ -89,7 +90,7 @@ export default function SignUpPage() {
                     <div className="space-y-2">
                         <Input
                             type="text"
-                            placeholder="Username (Nickname)"
+                            placeholder="닉네임"
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
                             className="bg-black border-gray-800 text-white placeholder:text-gray-500"
@@ -100,7 +101,7 @@ export default function SignUpPage() {
                     <div className="space-y-2">
                         <Input
                             type="email"
-                            placeholder="Email"
+                            placeholder="이메일"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             className="bg-black border-gray-800 text-white placeholder:text-gray-500"
@@ -110,7 +111,7 @@ export default function SignUpPage() {
                     <div className="space-y-2">
                         <Input
                             type="password"
-                            placeholder="Password (min 6 chars)"
+                            placeholder="비밀번호 (6자 이상)"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             className="bg-black border-gray-800 text-white placeholder:text-gray-500"
@@ -130,7 +131,7 @@ export default function SignUpPage() {
                         className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                         disabled={loading}
                     >
-                        {loading ? 'Creating Account...' : 'Sign Up'}
+                        {loading ? '가입 중...' : '회원가입'}
                     </Button>
                 </form>
             </Card>

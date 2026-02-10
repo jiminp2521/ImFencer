@@ -22,10 +22,10 @@ export default async function Home() {
 
   return (
     <div className="pb-20">
-      <header className="sticky top-0 z-40 bg-black/80 backdrop-blur-md border-b border-white/10 px-4 py-3 flex items-center justify-between">
-        <h1 className="text-xl font-bold tracking-tight text-white">
-          <span className="text-blue-500">Im</span>Fencer
-        </h1>
+      <header className="sticky top-0 z-40 bg-black/80 backdrop-blur-md border-b border-white/10 px-4 py-3 flex items-center justify-between h-14">
+        <div className="relative w-32 h-8">
+          <img src="/logo.png" alt="ImFencer" className="object-contain w-full h-full object-left" />
+        </div>
         <div className="flex gap-2">
           {/* Notification icon placeholder */}
         </div>

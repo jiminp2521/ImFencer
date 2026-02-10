@@ -87,9 +87,9 @@ export default function WritePage() {
                             <SelectValue placeholder="카테고리 선택" />
                         </SelectTrigger>
                         <SelectContent className="bg-gray-900 border-gray-800 text-white">
-                            <SelectItem value="Free">자유</SelectItem>
-                            <SelectItem value="Question">질문</SelectItem>
-                            <SelectItem value="Info">정보</SelectItem>
+                            <SelectItem value="Free">자유게시판</SelectItem>
+                            <SelectItem value="Question">질문 & 답변</SelectItem>
+                            <SelectItem value="Info">정보 공유</SelectItem>
                         </SelectContent>
                     </Select>
 
@@ -102,7 +102,7 @@ export default function WritePage() {
 
                     <div className="min-h-[200px]">
                         <Textarea
-                            placeholder="내용을 자유롭게 작성해주세요. (펜싱 관련 매너를 지켜주세요!)"
+                            placeholder="내용을 자유롭게 작성해주세요. (건전한 펜싱 문화를 만들어가요!)"
                             value={content}
                             onChange={(e) => setContent(e.target.value)}
                             className="bg-transparent border-none text-base resize-none min-h-[300px] placeholder:text-gray-600 focus-visible:ring-0 px-0"
@@ -115,6 +115,7 @@ export default function WritePage() {
                     <button className="text-gray-400 hover:text-blue-500 transition-colors">
                         <ImageIcon className="w-6 h-6" />
                     </button>
+                    {/* Add more toolbar items here */}
                 </div>
             </main>
         </div>
