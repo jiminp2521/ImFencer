@@ -80,7 +80,7 @@ export default function SignUpPage() {
             <div className="mb-8 flex flex-col items-center gap-4">
                 {/* Logo Image */}
                 <div className="relative w-40 h-12">
-                    <img src="/logo.png" alt="ImFencer Logo" className="object-contain w-full h-full" />
+                    <img src="/app-logo.png" alt="ImFencer Logo" className="object-contain w-full h-full" />
                 </div>
                 <p className="text-gray-400 text-sm">계정을 생성하고 시작하세요</p>
             </div>

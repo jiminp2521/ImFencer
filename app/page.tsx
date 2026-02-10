@@ -24,7 +24,7 @@ export default async function Home() {
     <div className="pb-20">
       <header className="sticky top-0 z-40 bg-black/80 backdrop-blur-md border-b border-white/10 px-4 py-3 flex items-center justify-between h-14">
         <div className="relative w-32 h-8">
-          <img src="/logo.png" alt="ImFencer" className="object-contain w-full h-full object-left" />
+          <img src="/app-logo.png" alt="ImFencer" className="object-contain w-full h-full object-left" />
         </div>
         <div className="flex gap-2">
           {/* Notification icon placeholder */}

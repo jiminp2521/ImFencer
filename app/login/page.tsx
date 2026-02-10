@@ -41,7 +41,7 @@ export default function LoginPage() {
             <div className="mb-8 flex flex-col items-center gap-4">
                 {/* Logo Image */}
                 <div className="relative w-48 h-16">
-                    <img src="/logo.png" alt="ImFencer Logo" className="object-contain w-full h-full" />
+                    <img src="/app-logo.png" alt="ImFencer Logo" className="object-contain w-full h-full" />
                 </div>
                 <p className="text-gray-400 text-sm">프리미엄 펜싱 커뮤니티에 오신 것을 환영합니다</p>
             </div>
