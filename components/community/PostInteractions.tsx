@@ -1,14 +1,12 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Bookmark, Heart, Loader2, MessageCircle, Send } from 'lucide-react';
-import { createClient } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { StartChatButton } from '@/components/chat/StartChatButton';
-import { notifyUser } from '@/lib/notifications-client';
 
 type PostComment = {
   id: string;
@@ -40,7 +38,6 @@ export function PostInteractions({
   initialComments,
 }: PostInteractionsProps) {
   const router = useRouter();
-  const supabase = useMemo(() => createClient(), []);
   const [liked, setLiked] = useState(initialLiked);
   const [bookmarked, setBookmarked] = useState(initialBookmarked);
   const [likeCount, setLikeCount] = useState(initialLikeCount);
@@ -66,19 +63,27 @@ export function PostInteractions({
 
     try {
       if (liked) {
-        const { error } = await supabase
-          .from('post_likes')
-          .delete()
-          .eq('post_id', postId)
-          .eq('user_id', currentUserId);
-        if (error) throw error;
+        const response = await fetch(`/api/posts/${postId}/likes`, {
+          method: 'DELETE',
+        });
+        if (response.status === 401) {
+          alert('로그인이 필요합니다.');
+          router.push(`/login?next=/posts/${postId}`);
+          return;
+        }
+        if (!response.ok) throw new Error('Failed to unlike');
         setLiked(false);
         setLikeCount((prev) => Math.max(0, prev - 1));
       } else {
-        const { error } = await supabase
-          .from('post_likes')
-          .insert({ post_id: postId, user_id: currentUserId });
-        if (error) throw error;
+        const response = await fetch(`/api/posts/${postId}/likes`, {
+          method: 'POST',
+        });
+        if (response.status === 401) {
+          alert('로그인이 필요합니다.');
+          router.push(`/login?next=/posts/${postId}`);
+          return;
+        }
+        if (!response.ok) throw new Error('Failed to like');
         setLiked(true);
         setLikeCount((prev) => prev + 1);
       }
@@ -96,18 +101,26 @@ export function PostInteractions({
 
     try {
       if (bookmarked) {
-        const { error } = await supabase
-          .from('post_bookmarks')
-          .delete()
-          .eq('post_id', postId)
-          .eq('user_id', currentUserId);
-        if (error) throw error;
+        const response = await fetch(`/api/posts/${postId}/bookmarks`, {
+          method: 'DELETE',
+        });
+        if (response.status === 401) {
+          alert('로그인이 필요합니다.');
+          router.push(`/login?next=/posts/${postId}`);
+          return;
+        }
+        if (!response.ok) throw new Error('Failed to remove bookmark');
         setBookmarked(false);
       } else {
-        const { error } = await supabase
-          .from('post_bookmarks')
-          .insert({ post_id: postId, user_id: currentUserId });
-        if (error) throw error;
+        const response = await fetch(`/api/posts/${postId}/bookmarks`, {
+          method: 'POST',
+        });
+        if (response.status === 401) {
+          alert('로그인이 필요합니다.');
+          router.push(`/login?next=/posts/${postId}`);
+          return;
+        }
+        if (!response.ok) throw new Error('Failed to bookmark');
         setBookmarked(true);
       }
     } catch (error) {
@@ -126,51 +139,47 @@ export function PostInteractions({
     setCommentPending(true);
 
     try {
-      const { data, error } = await supabase
-        .from('comments')
-        .insert({
-          post_id: postId,
-          author_id: currentUserId,
-          content,
-        })
-        .select(`
-          id,
-          author_id,
-          content,
-          created_at,
-          profiles:author_id (username)
-        `)
-        .single();
+      const response = await fetch(`/api/posts/${postId}/comments`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ content }),
+      });
 
-      if (error) throw error;
+      if (response.status === 401) {
+        alert('로그인이 필요합니다.');
+        router.push(`/login?next=/posts/${postId}`);
+        return;
+      }
 
-      const profile = Array.isArray(data.profiles) ? data.profiles[0] : data.profiles;
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(body?.error || 'Failed to create comment');
+      }
+
+      const body = (await response.json()) as {
+        comment: {
+          id: string;
+          authorId: string;
+          content: string;
+          createdAt: string;
+          author: string;
+        };
+      };
+
+      const newComment = body.comment;
       setComments((prev) => [
         ...prev,
         {
-          id: data.id,
-          authorId: data.author_id,
-          content: data.content,
-          createdAt: data.created_at,
-          author: profile?.username || '알 수 없음',
+          id: newComment.id,
+          authorId: newComment.authorId,
+          content: newComment.content,
+          createdAt: newComment.createdAt,
+          author: newComment.author || '알 수 없음',
         },
       ]);
       setCommentInput('');
-
-      if (currentUserId !== postAuthorId) {
-        try {
-          await notifyUser(supabase, {
-            userId: postAuthorId,
-            actorId: currentUserId,
-            type: 'comment',
-            title: '게시글에 새 댓글이 달렸습니다.',
-            body: content.length > 80 ? `${content.slice(0, 80)}...` : content,
-            link: `/posts/${postId}`,
-          });
-        } catch (notificationError) {
-          console.error('Error creating comment notification:', notificationError);
-        }
-      }
     } catch (error) {
       console.error('Comment submit failed:', error);
       alert('댓글 등록에 실패했습니다.');
