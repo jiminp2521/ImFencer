@@ -7,6 +7,7 @@ type MarketPageProps = {
   searchParams: Promise<{
     status?: string;
     weapon?: string;
+    q?: string;
   }>;
 };
 
@@ -42,7 +43,7 @@ const weaponLabelMap: Record<string, string> = {
   Fleuret: '플뢰레',
 };
 
-const buildMarketHref = (status: string, weapon: string) => {
+const buildMarketHref = (status: string, weapon: string, q: string) => {
   const params = new URLSearchParams();
 
   if (status !== 'All') {
@@ -51,6 +52,10 @@ const buildMarketHref = (status: string, weapon: string) => {
 
   if (weapon !== 'All') {
     params.set('weapon', weapon);
+  }
+
+  if (q.trim()) {
+    params.set('q', q.trim());
   }
 
   const query = params.toString();
@@ -78,6 +83,7 @@ export default async function MarketPage({ searchParams }: MarketPageProps) {
   const selectedWeapon = weaponFilters.some((filter) => filter.value === resolvedSearchParams.weapon)
     ? resolvedSearchParams.weapon!
     : 'All';
+  const searchText = (resolvedSearchParams.q || '').trim();
 
   let query = supabase
     .from('market_items')
@@ -103,6 +109,11 @@ export default async function MarketPage({ searchParams }: MarketPageProps) {
     query = query.eq('weapon_type', selectedWeapon);
   }
 
+  if (searchText) {
+    const escaped = searchText.replace(/[%_]/g, '');
+    query = query.or(`title.ilike.%${escaped}%,brand.ilike.%${escaped}%`);
+  }
+
   const { data: items, error } = await query;
 
   if (error) {
@@ -119,11 +130,30 @@ export default async function MarketPage({ searchParams }: MarketPageProps) {
       </header>
 
       <div className="space-y-2 border-b border-white/5 px-4 py-3">
+        <form action="/market" className="flex gap-2">
+          {selectedStatus !== 'All' ? <input type="hidden" name="status" value={selectedStatus} /> : null}
+          {selectedWeapon !== 'All' ? <input type="hidden" name="weapon" value={selectedWeapon} /> : null}
+          <input
+            type="text"
+            name="q"
+            defaultValue={searchText}
+            placeholder="상품명/브랜드 검색"
+            className="h-9 w-full rounded-md border border-gray-800 bg-gray-950 px-3 text-sm text-gray-100 placeholder:text-gray-500 outline-none focus:border-blue-500/60"
+          />
+          <Button
+            type="submit"
+            variant="outline"
+            className="h-9 border-gray-700 bg-gray-950 text-gray-200 hover:bg-gray-900"
+          >
+            검색
+          </Button>
+        </form>
+
         <div className="flex gap-2 overflow-x-auto no-scrollbar">
           {statusFilters.map((filter) => (
             <Link
               key={filter.value}
-              href={buildMarketHref(filter.value, selectedWeapon)}
+              href={buildMarketHref(filter.value, selectedWeapon, searchText)}
               className={`px-3 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition-colors ${
                 selectedStatus === filter.value
                   ? 'bg-white text-black'
@@ -139,7 +169,7 @@ export default async function MarketPage({ searchParams }: MarketPageProps) {
           {weaponFilters.map((filter) => (
             <Link
               key={filter.value}
-              href={buildMarketHref(selectedStatus, filter.value)}
+              href={buildMarketHref(selectedStatus, filter.value, searchText)}
               className={`px-3 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition-colors ${
                 selectedWeapon === filter.value
                   ? 'bg-blue-600 text-white'
@@ -150,6 +180,17 @@ export default async function MarketPage({ searchParams }: MarketPageProps) {
             </Link>
           ))}
         </div>
+
+        {searchText ? (
+          <div className="flex items-center justify-between text-[11px] text-gray-500">
+            <span>
+              &quot;{searchText}&quot; 검색 결과 {items?.length || 0}건
+            </span>
+            <Link href={buildMarketHref(selectedStatus, selectedWeapon, '')} className="text-gray-400 hover:text-gray-200">
+              검색 해제
+            </Link>
+          </div>
+        ) : null}
       </div>
 
       <main>

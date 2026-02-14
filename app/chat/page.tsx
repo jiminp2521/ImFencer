@@ -105,6 +105,7 @@ export default async function ChatPage({ searchParams }: ChatPageProps) {
             sender_id,
             content,
             created_at,
+            read_at,
             profiles:sender_id (username)
           `)
           .eq('chat_id', selectedChatId)
@@ -217,6 +218,20 @@ export default async function ChatPage({ searchParams }: ChatPageProps) {
                               {mine ? '나' : profile?.username || '상대방'}
                             </p>
                             <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+                            <p className="mt-1 text-[10px] opacity-70">
+                              {new Date(message.created_at).toLocaleTimeString('ko-KR', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                              {mine
+                                ? message.read_at
+                                  ? ` • 읽음 ${new Date(message.read_at).toLocaleTimeString('ko-KR', {
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                    })}`
+                                  : ' • 안읽음'
+                                : ''}
+                            </p>
                           </div>
                         </div>
                       );
