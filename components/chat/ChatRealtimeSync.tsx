@@ -12,10 +12,6 @@ type MessageRow = {
   chat_id?: string;
 };
 
-type ChatRow = {
-  id?: string;
-};
-
 export function ChatRealtimeSync({ chatIds }: ChatRealtimeSyncProps) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
@@ -32,7 +28,7 @@ export function ChatRealtimeSync({ chatIds }: ChatRealtimeSyncProps) {
 
       timeoutRef.current = setTimeout(() => {
         router.refresh();
-      }, 120);
+      }, 260);
     };
 
     const channel = supabase
@@ -43,13 +39,6 @@ export function ChatRealtimeSync({ chatIds }: ChatRealtimeSyncProps) {
           : payload.old) || {}) as MessageRow;
 
         if (message.chat_id && chatIdSet.has(message.chat_id)) {
-          scheduleRefresh();
-        }
-      })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chats' }, (payload) => {
-        const chat = (payload.new || {}) as ChatRow;
-
-        if (chat.id && chatIdSet.has(chat.id)) {
           scheduleRefresh();
         }
       })

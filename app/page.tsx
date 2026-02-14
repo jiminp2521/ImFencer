@@ -1,16 +1,52 @@
-import { createClient } from '@/lib/supabase-server';
+import Link from 'next/link';
 import { FeedItem } from '@/components/community/FeedItem';
 import { FloatingActionButton } from '@/components/ui/floating-action-button';
-import Link from 'next/link';
+import { createPublicClient } from '@/lib/supabase-public';
 
-export const revalidate = 0; // Disable static caching for real-time feel
+export const revalidate = 30;
 
 type HomePageProps = {
   searchParams: Promise<{
     category?: string;
     sort?: string;
+    page?: string;
   }>;
 };
+
+type FeedPost = {
+  id: string;
+  category: string;
+  title: string;
+  content: string | null;
+  image_url: string | null;
+  tags: string[] | null;
+  created_at: string;
+  author: string;
+  like_count: number;
+  comment_count: number;
+  score: number;
+};
+
+type FallbackPostRow = {
+  id: string;
+  category: string;
+  title: string;
+  content: string | null;
+  image_url: string | null;
+  tags: string[] | null;
+  created_at: string;
+  profiles: { username: string | null } | { username: string | null }[] | null;
+};
+
+type LikeRow = {
+  post_id: string;
+};
+
+type CommentRow = {
+  post_id: string;
+};
+
+const FEED_PAGE_SIZE = 20;
 
 const categoryFilters = [
   { label: '전체', value: 'All' },
@@ -24,7 +60,7 @@ const sortFilters = [
   { label: '인기순', value: 'popular' },
 ];
 
-const buildHomeHref = (category: string, sort: string) => {
+const buildHomeHref = (category: string, sort: string, page = 1) => {
   const params = new URLSearchParams();
 
   if (category !== 'All') {
@@ -35,13 +71,32 @@ const buildHomeHref = (category: string, sort: string) => {
     params.set('sort', sort);
   }
 
+  if (page > 1) {
+    params.set('page', String(page));
+  }
+
   const query = params.toString();
   return query ? `/?${query}` : '/';
 };
 
+const parsePositivePage = (rawValue: string | undefined) => {
+  const parsed = Number.parseInt(rawValue || '1', 10);
+  if (!Number.isFinite(parsed) || parsed < 1) return 1;
+  return parsed;
+};
+
+const pickProfile = (profiles: FallbackPostRow['profiles']) => {
+  if (Array.isArray(profiles)) {
+    return profiles[0] || null;
+  }
+
+  return profiles;
+};
+
 export default async function Home({ searchParams }: HomePageProps) {
   const resolvedSearchParams = await searchParams;
-  const supabase = await createClient();
+  const supabase = createPublicClient();
+  const requestedPage = parsePositivePage(resolvedSearchParams.page);
   const selectedCategory = categoryFilters.some(
     (filter) => filter.value === resolvedSearchParams.category
   )
@@ -51,80 +106,128 @@ export default async function Home({ searchParams }: HomePageProps) {
     ? resolvedSearchParams.sort!
     : 'latest';
 
-  // Fetch posts with author info
-  let postsQuery = supabase
-    .from('posts')
-    .select(`
-      *,
-      profiles:author_id (username)
-    `)
-    .order('created_at', { ascending: false });
-
+  let totalCountQuery = supabase.from('posts').select('id', { count: 'exact', head: true });
   if (selectedCategory !== 'All') {
-    postsQuery = postsQuery.eq('category', selectedCategory);
+    totalCountQuery = totalCountQuery.eq('category', selectedCategory);
   }
 
-  const { data: fetchedPosts, error } = await postsQuery;
-
-  if (error) {
-    console.error("Error fetching posts:", error);
+  const { count: totalCount, error: totalCountError } = await totalCountQuery;
+  if (totalCountError) {
+    console.error('Error fetching feed total count:', totalCountError);
   }
 
-  const posts = fetchedPosts || [];
+  const totalPages = Math.max(1, Math.ceil((totalCount || 0) / FEED_PAGE_SIZE));
+  const currentPage = Math.min(requestedPage, totalPages);
+  const offset = (currentPage - 1) * FEED_PAGE_SIZE;
+  const categoryArg = selectedCategory === 'All' ? null : selectedCategory;
 
-  const postStats = new Map<string, { likeCount: number; commentCount: number; score: number }>();
+  const { data: rpcPosts, error: rpcError } = await supabase.rpc('get_feed_posts', {
+    p_category: categoryArg,
+    p_sort: selectedSort,
+    p_limit: FEED_PAGE_SIZE,
+    p_offset: offset,
+  });
 
-  if (posts.length > 0) {
-    const postIds = posts.map((post) => post.id);
-    const [likesResult, commentsResult] = await Promise.all([
-      supabase.from('post_likes').select('post_id').in('post_id', postIds),
-      supabase
-        .from('comments')
-        .select('post_id')
-        .in('post_id', postIds)
-        .is('parent_id', null),
-    ]);
+  let posts: FeedPost[] = [];
 
-    if (likesResult.error) {
-      console.error('Error fetching likes for feed:', likesResult.error);
+  if (rpcError) {
+    // Fallback path for environments where migration SQL has not been applied yet.
+    console.error('RPC get_feed_posts failed, using fallback feed query:', rpcError);
+
+    let fallbackQuery = supabase
+      .from('posts')
+      .select(`
+        id,
+        category,
+        title,
+        content,
+        image_url,
+        tags,
+        created_at,
+        profiles:author_id (username)
+      `)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + FEED_PAGE_SIZE - 1);
+
+    if (selectedCategory !== 'All') {
+      fallbackQuery = fallbackQuery.eq('category', selectedCategory);
     }
 
-    if (commentsResult.error) {
-      console.error('Error fetching comments for feed:', commentsResult.error);
+    const { data: fallbackRows, error: fallbackError } = await fallbackQuery;
+    if (fallbackError) {
+      console.error('Fallback feed query failed:', fallbackError);
     }
 
-    for (const post of posts) {
-      postStats.set(post.id, { likeCount: 0, commentCount: 0, score: 0 });
-    }
-
-    for (const like of likesResult.data || []) {
-      const stats = postStats.get(like.post_id);
-      if (stats) {
-        stats.likeCount += 1;
-        stats.score += 2;
-      }
-    }
-
-    for (const comment of commentsResult.data || []) {
-      const stats = postStats.get(comment.post_id);
-      if (stats) {
-        stats.commentCount += 1;
-        stats.score += 1;
-      }
-    }
-  }
-
-  if (selectedSort === 'popular') {
-    posts.sort((left, right) => {
-      const leftStats = postStats.get(left.id) || { score: 0 };
-      const rightStats = postStats.get(right.id) || { score: 0 };
-
-      if (rightStats.score !== leftStats.score) {
-        return rightStats.score - leftStats.score;
-      }
-
-      return new Date(right.created_at).getTime() - new Date(left.created_at).getTime();
+    const fallbackPosts = (fallbackRows || []) as unknown as FallbackPostRow[];
+    posts = fallbackPosts.map((post) => {
+      const profile = pickProfile(post.profiles);
+      return {
+        id: post.id,
+        category: post.category,
+        title: post.title,
+        content: post.content,
+        image_url: post.image_url,
+        tags: post.tags,
+        created_at: post.created_at,
+        author: profile?.username || '알 수 없음',
+        like_count: 0,
+        comment_count: 0,
+        score: 0,
+      };
     });
+
+    const postIds = posts.map((post) => post.id);
+    if (postIds.length > 0) {
+      const [likesResult, commentsResult] = await Promise.all([
+        supabase.from('post_likes').select('post_id').in('post_id', postIds),
+        supabase
+          .from('comments')
+          .select('post_id')
+          .in('post_id', postIds)
+          .is('parent_id', null),
+      ]);
+
+      if (likesResult.error) {
+        console.error('Error fetching likes for fallback feed:', likesResult.error);
+      }
+      if (commentsResult.error) {
+        console.error('Error fetching comments for fallback feed:', commentsResult.error);
+      }
+
+      for (const like of (likesResult.data || []) as LikeRow[]) {
+        const target = posts.find((post) => post.id === like.post_id);
+        if (target) {
+          target.like_count += 1;
+          target.score += 2;
+        }
+      }
+
+      for (const comment of (commentsResult.data || []) as CommentRow[]) {
+        const target = posts.find((post) => post.id === comment.post_id);
+        if (target) {
+          target.comment_count += 1;
+          target.score += 1;
+        }
+      }
+    }
+
+    if (selectedSort === 'popular') {
+      posts.sort((left, right) => {
+        if (right.score !== left.score) {
+          return right.score - left.score;
+        }
+
+        return new Date(right.created_at).getTime() - new Date(left.created_at).getTime();
+      });
+    }
+  } else {
+    posts = ((rpcPosts || []) as FeedPost[]).map((post) => ({
+      ...post,
+      like_count: Number(post.like_count || 0),
+      comment_count: Number(post.comment_count || 0),
+      score: Number(post.score || 0),
+      author: post.author || '알 수 없음',
+    }));
   }
 
   return (
@@ -133,16 +236,14 @@ export default async function Home({ searchParams }: HomePageProps) {
         <div className="relative w-32 h-8">
           <img src="/app-logo.png" alt="ImFencer" className="object-contain w-full h-full object-left" />
         </div>
-        <div className="flex gap-2">
-          {/* Notification icon placeholder */}
-        </div>
+        <div className="flex gap-2" />
       </header>
 
       <div className="flex gap-2 px-4 py-3 overflow-x-auto no-scrollbar border-b border-white/5">
         {categoryFilters.map((filter) => (
           <Link
             key={filter.value}
-            href={buildHomeHref(filter.value, selectedSort)}
+            href={buildHomeHref(filter.value, selectedSort, 1)}
             className={`px-3 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition-colors ${
               selectedCategory === filter.value
                 ? 'bg-white text-black'
@@ -158,7 +259,7 @@ export default async function Home({ searchParams }: HomePageProps) {
         {sortFilters.map((filter) => (
           <Link
             key={filter.value}
-            href={buildHomeHref(selectedCategory, filter.value)}
+            href={buildHomeHref(selectedCategory, filter.value, 1)}
             className={`px-3 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition-colors ${
               selectedSort === filter.value
                 ? 'bg-blue-600 text-white'
@@ -172,26 +273,21 @@ export default async function Home({ searchParams }: HomePageProps) {
 
       <main>
         {posts.length > 0 ? (
-          posts.map((post) => {
-            const profile = Array.isArray(post.profiles) ? post.profiles[0] : post.profiles;
-            const stats = postStats.get(post.id) || { likeCount: 0, commentCount: 0 };
-
-            return (
-              <FeedItem
-                key={post.id}
-                id={post.id}
-                category={post.category}
-                title={post.title}
-                previewText={post.content || ''} // Using content as preview for now
-                imageUrl={post.image_url}
-                tags={post.tags}
-                author={profile?.username || '알 수 없음'}
-                date={post.created_at}
-                likeCount={stats.likeCount}
-                commentCount={stats.commentCount}
-              />
-            );
-          })
+          posts.map((post) => (
+            <FeedItem
+              key={post.id}
+              id={post.id}
+              category={post.category}
+              title={post.title}
+              previewText={post.content || ''}
+              imageUrl={post.image_url}
+              tags={post.tags}
+              author={post.author}
+              date={post.created_at}
+              likeCount={post.like_count}
+              commentCount={post.comment_count}
+            />
+          ))
         ) : (
           <div className="flex flex-col items-center justify-center py-20 text-gray-500 gap-2">
             <p>등록된 게시글이 없습니다.</p>
@@ -199,6 +295,40 @@ export default async function Home({ searchParams }: HomePageProps) {
           </div>
         )}
       </main>
+
+      {totalPages > 1 ? (
+        <div className="border-t border-white/5 px-4 py-4 flex items-center justify-between text-xs">
+          {currentPage > 1 ? (
+            <Link
+              href={buildHomeHref(selectedCategory, selectedSort, currentPage - 1)}
+              className="rounded-full border border-gray-700 bg-gray-900 px-3 py-1.5 text-gray-300 hover:bg-gray-800"
+            >
+              이전
+            </Link>
+          ) : (
+            <span className="rounded-full border border-gray-800 bg-gray-900/60 px-3 py-1.5 text-gray-600">
+              이전
+            </span>
+          )}
+
+          <span className="text-gray-500">
+            {currentPage} / {totalPages}
+          </span>
+
+          {currentPage < totalPages ? (
+            <Link
+              href={buildHomeHref(selectedCategory, selectedSort, currentPage + 1)}
+              className="rounded-full border border-gray-700 bg-gray-900 px-3 py-1.5 text-gray-300 hover:bg-gray-800"
+            >
+              다음
+            </Link>
+          ) : (
+            <span className="rounded-full border border-gray-800 bg-gray-900/60 px-3 py-1.5 text-gray-600">
+              다음
+            </span>
+          )}
+        </div>
+      ) : null}
 
       <FloatingActionButton />
     </div>

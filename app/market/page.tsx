@@ -1,15 +1,20 @@
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase-server';
+import { createPublicClient } from '@/lib/supabase-public';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+
+export const revalidate = 20;
 
 type MarketPageProps = {
   searchParams: Promise<{
     status?: string;
     weapon?: string;
     q?: string;
+    page?: string;
   }>;
 };
+
+const MARKET_PAGE_SIZE = 24;
 
 const statusFilters = [
   { label: '전체', value: 'All' },
@@ -43,7 +48,7 @@ const weaponLabelMap: Record<string, string> = {
   Fleuret: '플뢰레',
 };
 
-const buildMarketHref = (status: string, weapon: string, q: string) => {
+const buildMarketHref = (status: string, weapon: string, q: string, page = 1) => {
   const params = new URLSearchParams();
 
   if (status !== 'All') {
@@ -58,8 +63,18 @@ const buildMarketHref = (status: string, weapon: string, q: string) => {
     params.set('q', q.trim());
   }
 
+  if (page > 1) {
+    params.set('page', String(page));
+  }
+
   const query = params.toString();
   return query ? `/market?${query}` : '/market';
+};
+
+const parsePositivePage = (rawValue: string | undefined) => {
+  const parsed = Number.parseInt(rawValue || '1', 10);
+  if (!Number.isFinite(parsed) || parsed < 1) return 1;
+  return parsed;
 };
 
 const getTimeAgo = (dateString: string) => {
@@ -75,7 +90,8 @@ const getTimeAgo = (dateString: string) => {
 
 export default async function MarketPage({ searchParams }: MarketPageProps) {
   const resolvedSearchParams = await searchParams;
-  const supabase = await createClient();
+  const supabase = createPublicClient();
+  const requestedPage = parsePositivePage(resolvedSearchParams.page);
 
   const selectedStatus = statusFilters.some((filter) => filter.value === resolvedSearchParams.status)
     ? resolvedSearchParams.status!
@@ -84,6 +100,30 @@ export default async function MarketPage({ searchParams }: MarketPageProps) {
     ? resolvedSearchParams.weapon!
     : 'All';
   const searchText = (resolvedSearchParams.q || '').trim();
+
+  let countQuery = supabase.from('market_items').select('id', { count: 'exact', head: true });
+
+  if (selectedStatus !== 'All') {
+    countQuery = countQuery.eq('status', selectedStatus);
+  }
+
+  if (selectedWeapon !== 'All') {
+    countQuery = countQuery.eq('weapon_type', selectedWeapon);
+  }
+
+  if (searchText) {
+    const escaped = searchText.replace(/[%_]/g, '');
+    countQuery = countQuery.or(`title.ilike.%${escaped}%,brand.ilike.%${escaped}%`);
+  }
+
+  const { count: totalCount, error: countError } = await countQuery;
+  if (countError) {
+    console.error('Error fetching market item count:', countError);
+  }
+
+  const totalPages = Math.max(1, Math.ceil((totalCount || 0) / MARKET_PAGE_SIZE));
+  const currentPage = Math.min(requestedPage, totalPages);
+  const offset = (currentPage - 1) * MARKET_PAGE_SIZE;
 
   let query = supabase
     .from('market_items')
@@ -99,7 +139,8 @@ export default async function MarketPage({ searchParams }: MarketPageProps) {
       created_at,
       profiles:seller_id (username)
     `)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .range(offset, offset + MARKET_PAGE_SIZE - 1);
 
   if (selectedStatus !== 'All') {
     query = query.eq('status', selectedStatus);
@@ -153,7 +194,7 @@ export default async function MarketPage({ searchParams }: MarketPageProps) {
           {statusFilters.map((filter) => (
             <Link
               key={filter.value}
-              href={buildMarketHref(filter.value, selectedWeapon, searchText)}
+              href={buildMarketHref(filter.value, selectedWeapon, searchText, 1)}
               className={`px-3 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition-colors ${
                 selectedStatus === filter.value
                   ? 'bg-white text-black'
@@ -169,7 +210,7 @@ export default async function MarketPage({ searchParams }: MarketPageProps) {
           {weaponFilters.map((filter) => (
             <Link
               key={filter.value}
-              href={buildMarketHref(selectedStatus, filter.value, searchText)}
+              href={buildMarketHref(selectedStatus, filter.value, searchText, 1)}
               className={`px-3 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition-colors ${
                 selectedWeapon === filter.value
                   ? 'bg-blue-600 text-white'
@@ -184,9 +225,9 @@ export default async function MarketPage({ searchParams }: MarketPageProps) {
         {searchText ? (
           <div className="flex items-center justify-between text-[11px] text-gray-500">
             <span>
-              &quot;{searchText}&quot; 검색 결과 {items?.length || 0}건
+              &quot;{searchText}&quot; 검색 결과 {totalCount || 0}건
             </span>
-            <Link href={buildMarketHref(selectedStatus, selectedWeapon, '')} className="text-gray-400 hover:text-gray-200">
+            <Link href={buildMarketHref(selectedStatus, selectedWeapon, '', 1)} className="text-gray-400 hover:text-gray-200">
               검색 해제
             </Link>
           </div>
@@ -261,6 +302,40 @@ export default async function MarketPage({ searchParams }: MarketPageProps) {
           </div>
         )}
       </main>
+
+      {totalPages > 1 ? (
+        <div className="border-t border-white/5 px-4 py-4 flex items-center justify-between text-xs">
+          {currentPage > 1 ? (
+            <Link
+              href={buildMarketHref(selectedStatus, selectedWeapon, searchText, currentPage - 1)}
+              className="rounded-full border border-gray-700 bg-gray-900 px-3 py-1.5 text-gray-300 hover:bg-gray-800"
+            >
+              이전
+            </Link>
+          ) : (
+            <span className="rounded-full border border-gray-800 bg-gray-900/60 px-3 py-1.5 text-gray-600">
+              이전
+            </span>
+          )}
+
+          <span className="text-gray-500">
+            {currentPage} / {totalPages}
+          </span>
+
+          {currentPage < totalPages ? (
+            <Link
+              href={buildMarketHref(selectedStatus, selectedWeapon, searchText, currentPage + 1)}
+              className="rounded-full border border-gray-700 bg-gray-900 px-3 py-1.5 text-gray-300 hover:bg-gray-800"
+            >
+              다음
+            </Link>
+          ) : (
+            <span className="rounded-full border border-gray-800 bg-gray-900/60 px-3 py-1.5 text-gray-600">
+              다음
+            </span>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }

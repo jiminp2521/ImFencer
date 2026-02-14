@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Loader2, Send } from 'lucide-react';
 import { createClient } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
@@ -13,7 +12,6 @@ type ChatComposerProps = {
 };
 
 export function ChatComposer({ chatId, senderId }: ChatComposerProps) {
-  const router = useRouter();
   const supabase = createClient();
   const [content, setContent] = useState('');
   const [pending, setPending] = useState(false);
@@ -47,7 +45,6 @@ export function ChatComposer({ chatId, senderId }: ChatComposerProps) {
 
     setContent('');
     setPending(false);
-    router.refresh();
   };
 
   return (

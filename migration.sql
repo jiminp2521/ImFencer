@@ -188,6 +188,80 @@ create index if not exists idx_post_bookmarks_user_id
   on public.post_bookmarks(user_id);
 create index if not exists idx_messages_chat_created_at
   on public.messages(chat_id, created_at desc);
+create index if not exists idx_post_likes_post_id
+  on public.post_likes(post_id);
+
+drop function if exists public.get_feed_posts(text, text, integer, integer);
+create function public.get_feed_posts(
+  p_category text default null,
+  p_sort text default 'latest',
+  p_limit integer default 20,
+  p_offset integer default 0
+)
+returns table (
+  id uuid,
+  category text,
+  title text,
+  content text,
+  image_url text,
+  tags text[],
+  created_at timestamp with time zone,
+  author text,
+  like_count integer,
+  comment_count integer,
+  score integer
+)
+language sql
+stable
+as $$
+  with post_base as (
+    select
+      p.id,
+      p.category,
+      p.title,
+      p.content,
+      p.image_url,
+      p.tags,
+      p.created_at,
+      pr.username as author
+    from public.posts p
+    left join public.profiles pr on pr.id = p.author_id
+    where p_category is null or p.category = p_category
+  ),
+  like_stats as (
+    select post_id, count(*)::integer as like_count
+    from public.post_likes
+    group by post_id
+  ),
+  comment_stats as (
+    select post_id, count(*)::integer as comment_count
+    from public.comments
+    where parent_id is null
+    group by post_id
+  )
+  select
+    pb.id,
+    pb.category,
+    pb.title,
+    pb.content,
+    pb.image_url,
+    pb.tags,
+    pb.created_at,
+    coalesce(pb.author, '알 수 없음') as author,
+    coalesce(ls.like_count, 0) as like_count,
+    coalesce(cs.comment_count, 0) as comment_count,
+    (coalesce(ls.like_count, 0) * 2 + coalesce(cs.comment_count, 0))::integer as score
+  from post_base pb
+  left join like_stats ls on ls.post_id = pb.id
+  left join comment_stats cs on cs.post_id = pb.id
+  order by
+    case when p_sort = 'popular' then (coalesce(ls.like_count, 0) * 2 + coalesce(cs.comment_count, 0)) end desc,
+    pb.created_at desc
+  limit greatest(p_limit, 1)
+  offset greatest(p_offset, 0);
+$$;
+
+grant execute on function public.get_feed_posts(text, text, integer, integer) to anon, authenticated;
 
 -- FENCING CLUBS
 create table if not exists public.fencing_clubs (
