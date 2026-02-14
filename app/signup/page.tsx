@@ -27,9 +27,16 @@ export default function SignUpPage() {
         e.preventDefault();
         setLoading(true);
         setError(null);
+        const trimmedUsername = username.trim();
 
         if (password !== confirmPassword) {
             setError('비밀번호가 일치하지 않습니다.');
+            setLoading(false);
+            return;
+        }
+
+        if (trimmedUsername.length < 3) {
+            setError('닉네임은 3자 이상이어야 합니다.');
             setLoading(false);
             return;
         }
@@ -40,7 +47,7 @@ export default function SignUpPage() {
             password,
             options: {
                 data: {
-                    username: username,
+                    username: trimmedUsername,
                     weapon_type: weaponType,
                     user_type: userType,
                 }
@@ -65,7 +72,7 @@ export default function SignUpPage() {
                 .from('profiles')
                 .insert({
                     id: authData.user.id,
-                    username: username,
+                    username: trimmedUsername,
                     weapon_type: weaponType,
                     user_type: userType, // You may need to add this column to your database or map 'is_coach'
                     tier: 'Bronze',
@@ -143,12 +150,12 @@ export default function SignUpPage() {
                     <div className="space-y-2">
                         <Input
                             type="text"
-                            placeholder="닉네임"
+                            placeholder="닉네임 (3자 이상)"
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
                             className="bg-black border-gray-800 text-white placeholder:text-gray-500"
                             required
-                            minLength={2}
+                            minLength={3}
                         />
                     </div>
                     <div className="space-y-2">

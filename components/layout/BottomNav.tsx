@@ -7,6 +7,11 @@ import { cn } from '@/lib/utils';
 
 export function BottomNav() {
     const pathname = usePathname();
+    const hideNavPrefixes = ['/login', '/signup', '/write', '/auth'];
+
+    if (hideNavPrefixes.some((prefix) => pathname.startsWith(prefix))) {
+        return null;
+    }
 
     const tabs = [
         {
@@ -40,7 +45,10 @@ export function BottomNav() {
         <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-black pb-safe">
             <div className="flex h-16 items-center justify-around px-2">
                 {tabs.map((tab) => {
-                    const isActive = pathname === tab.href;
+                    const isActive =
+                        tab.href === '/'
+                            ? pathname === '/'
+                            : pathname === tab.href || pathname.startsWith(`${tab.href}/`);
                     const Icon = tab.icon;
 
                     return (

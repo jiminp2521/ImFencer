@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,7 @@ export default function ProfileSetupPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const router = useRouter();
-    const supabase = createClient();
+    const supabase = useMemo(() => createClient(), []);
 
     useEffect(() => {
         const checkUser = async () => {
@@ -42,6 +42,13 @@ export default function ProfileSetupPage() {
         e.preventDefault();
         setLoading(true);
         setError(null);
+        const trimmedUsername = username.trim();
+
+        if (trimmedUsername.length < 3) {
+            setError('닉네임은 3자 이상이어야 합니다.');
+            setLoading(false);
+            return;
+        }
 
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
@@ -54,7 +61,7 @@ export default function ProfileSetupPage() {
             .from('profiles')
             .upsert({
                 id: user.id,
-                username: username,
+                username: trimmedUsername,
                 weapon_type: weaponType,
                 user_type: userType,
                 tier: 'Bronze',
@@ -88,12 +95,12 @@ export default function ProfileSetupPage() {
                     <div className="space-y-2">
                         <Input
                             type="text"
-                            placeholder="닉네임"
+                            placeholder="닉네임 (3자 이상)"
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
                             className="bg-black border-gray-800 text-white placeholder:text-gray-500"
                             required
-                            minLength={2}
+                            minLength={3}
                         />
                     </div>
                     <div className="space-y-2">

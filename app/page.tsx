@@ -1,11 +1,11 @@
-import { createClient } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase-server';
 import { FeedItem } from '@/components/community/FeedItem';
 import { FloatingActionButton } from '@/components/ui/floating-action-button';
 
 export const revalidate = 0; // Disable static caching for real-time feel
 
 export default async function Home() {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   // Fetch posts with author info
   const { data: posts, error } = await supabase
@@ -44,19 +44,23 @@ export default async function Home() {
 
       <main>
         {posts && posts.length > 0 ? (
-          posts.map((post) => (
-            <FeedItem
-              key={post.id}
-              id={post.id}
-              category={post.category}
-              title={post.title}
-              previewText={post.content || ''} // Using content as preview for now
-              imageUrl={post.image_url}
-              tags={post.tags}
-              author={post.profiles?.username || '알 수 없음'} // Handle joined data
-              date={post.created_at}
-            />
-          ))
+          posts.map((post) => {
+            const profile = Array.isArray(post.profiles) ? post.profiles[0] : post.profiles;
+
+            return (
+              <FeedItem
+                key={post.id}
+                id={post.id}
+                category={post.category}
+                title={post.title}
+                previewText={post.content || ''} // Using content as preview for now
+                imageUrl={post.image_url}
+                tags={post.tags}
+                author={profile?.username || '알 수 없음'}
+                date={post.created_at}
+              />
+            );
+          })
         ) : (
           <div className="flex flex-col items-center justify-center py-20 text-gray-500 gap-2">
             <p>등록된 게시글이 없습니다.</p>
@@ -69,5 +73,3 @@ export default async function Home() {
     </div>
   );
 }
-// Trigger deployment Tue Feb 10 10:24:10 KST 2026
-// Helper triggers webhook restoration
