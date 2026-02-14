@@ -37,7 +37,7 @@ export default async function ChatPage({ searchParams }: ChatPageProps) {
         </header>
         <main className="px-4 py-16 text-center space-y-4">
           <p className="text-lg font-semibold text-white">로그인 후 채팅을 이용할 수 있습니다.</p>
-          <p className="text-sm text-gray-400">마켓에서 판매자에게 문의를 보내면 채팅방이 생성됩니다.</p>
+          <p className="text-sm text-gray-400">커뮤니티/마켓/펜싱 메뉴에서 문의를 보내면 채팅방이 생성됩니다.</p>
           <Link
             href="/login?next=/chat"
             className="inline-flex items-center justify-center rounded-md bg-blue-600 hover:bg-blue-700 px-4 py-2 text-sm font-medium text-white"
@@ -252,12 +252,12 @@ export default async function ChatPage({ searchParams }: ChatPageProps) {
       ) : (
         <main className="px-4 py-16 text-center space-y-3">
           <p className="text-lg font-semibold text-white">아직 채팅방이 없습니다.</p>
-          <p className="text-sm text-gray-400">마켓 상품의 문의하기 버튼으로 대화를 시작할 수 있습니다.</p>
+          <p className="text-sm text-gray-400">커뮤니티, 마켓, 펜싱 메뉴의 채팅 버튼으로 대화를 시작할 수 있습니다.</p>
           <Link
-            href="/market"
+            href="/fencing"
             className="inline-flex items-center justify-center rounded-md bg-blue-600 hover:bg-blue-700 px-4 py-2 text-sm font-medium text-white"
           >
-            마켓 보기
+            펜싱 메뉴 보기
           </Link>
         </main>
       )}

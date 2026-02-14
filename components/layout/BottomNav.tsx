@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 
 export function BottomNav() {
     const pathname = usePathname();
-    const hideNavPrefixes = ['/login', '/signup', '/write', '/auth'];
+    const hideNavPrefixes = ['/login', '/signup', '/write', '/auth', '/fencing/lessons/write'];
 
     if (hideNavPrefixes.some((prefix) => pathname.startsWith(prefix))) {
         return null;

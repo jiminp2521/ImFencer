@@ -7,9 +7,11 @@ import { createClient } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import { StartChatButton } from '@/components/chat/StartChatButton';
 
 type PostComment = {
   id: string;
+  authorId: string;
   content: string;
   createdAt: string;
   author: string;
@@ -17,6 +19,8 @@ type PostComment = {
 
 type PostInteractionsProps = {
   postId: string;
+  postTitle: string;
+  postAuthorId: string;
   currentUserId: string | null;
   initialLiked: boolean;
   initialBookmarked: boolean;
@@ -26,6 +30,8 @@ type PostInteractionsProps = {
 
 export function PostInteractions({
   postId,
+  postTitle,
+  postAuthorId,
   currentUserId,
   initialLiked,
   initialBookmarked,
@@ -128,6 +134,7 @@ export function PostInteractions({
         })
         .select(`
           id,
+          author_id,
           content,
           created_at,
           profiles:author_id (username)
@@ -141,6 +148,7 @@ export function PostInteractions({
         ...prev,
         {
           id: data.id,
+          authorId: data.author_id,
           content: data.content,
           createdAt: data.created_at,
           author: profile?.username || '알 수 없음',
@@ -193,6 +201,16 @@ export function PostInteractions({
         </Button>
 
         <div className="ml-auto flex items-center gap-1 text-xs text-gray-500">
+          <StartChatButton
+            targetUserId={postAuthorId}
+            contextTitle={postTitle}
+            openingMessage={`${postTitle} 게시글 문의드립니다.`}
+            loginNext={`/posts/${postId}`}
+            label="작성자 채팅"
+            size="xs"
+            variant="ghost"
+            className="text-gray-400 hover:text-white"
+          />
           <MessageCircle className="w-4 h-4" />
           <span>{comments.length}</span>
         </div>
@@ -223,15 +241,27 @@ export function PostInteractions({
         {comments.length > 0 ? (
           comments.map((comment) => (
             <article key={comment.id} className="rounded-lg border border-white/10 bg-gray-950 px-3 py-2.5">
-              <div className="mb-1 flex items-center gap-2 text-[11px] text-gray-500">
-                <span className="font-medium text-gray-300">{comment.author}</span>
-                <span>•</span>
-                <span>
-                  {new Date(comment.createdAt).toLocaleString('ko-KR', {
-                    dateStyle: 'short',
-                    timeStyle: 'short',
-                  })}
-                </span>
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 text-[11px] text-gray-500">
+                  <span className="font-medium text-gray-300">{comment.author}</span>
+                  <span>•</span>
+                  <span>
+                    {new Date(comment.createdAt).toLocaleString('ko-KR', {
+                      dateStyle: 'short',
+                      timeStyle: 'short',
+                    })}
+                  </span>
+                </div>
+                <StartChatButton
+                  targetUserId={comment.authorId}
+                  contextTitle={postTitle}
+                  openingMessage={`${postTitle} 댓글 관련 문의드립니다.`}
+                  loginNext={`/posts/${postId}`}
+                  label="채팅"
+                  size="xs"
+                  variant="ghost"
+                  className="h-6 px-2 text-[11px] text-gray-400 hover:text-white"
+                />
               </div>
               <p className="whitespace-pre-wrap text-sm leading-6 text-gray-200">{comment.content}</p>
             </article>
