@@ -11,6 +11,8 @@ interface FeedItemProps {
     tags: string[] | null;
     author: string;
     date: string;
+    likeCount?: number;
+    commentCount?: number;
 }
 
 export function FeedItem({
@@ -22,6 +24,8 @@ export function FeedItem({
     tags,
     author,
     date,
+    likeCount = 0,
+    commentCount = 0,
 }: FeedItemProps) {
     // Simple time ago formatter (Korean)
     const getTimeAgo = (dateString: string) => {
@@ -59,6 +63,10 @@ export function FeedItem({
                     <p className="text-sm text-gray-400 line-clamp-2">
                         {previewText}
                     </p>
+                    <div className="flex items-center gap-3 text-[11px] text-gray-500">
+                        <span>좋아요 {likeCount}</span>
+                        <span>댓글 {commentCount}</span>
+                    </div>
                     {tags && tags.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-2">
                             {tags.map((tag) => (

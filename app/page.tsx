@@ -8,6 +8,7 @@ export const revalidate = 0; // Disable static caching for real-time feel
 type HomePageProps = {
   searchParams: Promise<{
     category?: string;
+    sort?: string;
   }>;
 };
 
@@ -18,6 +19,26 @@ const categoryFilters = [
   { label: '정보', value: 'Info' },
 ];
 
+const sortFilters = [
+  { label: '최신순', value: 'latest' },
+  { label: '인기순', value: 'popular' },
+];
+
+const buildHomeHref = (category: string, sort: string) => {
+  const params = new URLSearchParams();
+
+  if (category !== 'All') {
+    params.set('category', category);
+  }
+
+  if (sort !== 'latest') {
+    params.set('sort', sort);
+  }
+
+  const query = params.toString();
+  return query ? `/?${query}` : '/';
+};
+
 export default async function Home({ searchParams }: HomePageProps) {
   const resolvedSearchParams = await searchParams;
   const supabase = await createClient();
@@ -26,6 +47,9 @@ export default async function Home({ searchParams }: HomePageProps) {
   )
     ? resolvedSearchParams.category!
     : 'All';
+  const selectedSort = sortFilters.some((filter) => filter.value === resolvedSearchParams.sort)
+    ? resolvedSearchParams.sort!
+    : 'latest';
 
   // Fetch posts with author info
   let postsQuery = supabase
@@ -40,10 +64,67 @@ export default async function Home({ searchParams }: HomePageProps) {
     postsQuery = postsQuery.eq('category', selectedCategory);
   }
 
-  const { data: posts, error } = await postsQuery;
+  const { data: fetchedPosts, error } = await postsQuery;
 
   if (error) {
     console.error("Error fetching posts:", error);
+  }
+
+  const posts = fetchedPosts || [];
+
+  const postStats = new Map<string, { likeCount: number; commentCount: number; score: number }>();
+
+  if (posts.length > 0) {
+    const postIds = posts.map((post) => post.id);
+    const [likesResult, commentsResult] = await Promise.all([
+      supabase.from('post_likes').select('post_id').in('post_id', postIds),
+      supabase
+        .from('comments')
+        .select('post_id')
+        .in('post_id', postIds)
+        .is('parent_id', null),
+    ]);
+
+    if (likesResult.error) {
+      console.error('Error fetching likes for feed:', likesResult.error);
+    }
+
+    if (commentsResult.error) {
+      console.error('Error fetching comments for feed:', commentsResult.error);
+    }
+
+    for (const post of posts) {
+      postStats.set(post.id, { likeCount: 0, commentCount: 0, score: 0 });
+    }
+
+    for (const like of likesResult.data || []) {
+      const stats = postStats.get(like.post_id);
+      if (stats) {
+        stats.likeCount += 1;
+        stats.score += 2;
+      }
+    }
+
+    for (const comment of commentsResult.data || []) {
+      const stats = postStats.get(comment.post_id);
+      if (stats) {
+        stats.commentCount += 1;
+        stats.score += 1;
+      }
+    }
+  }
+
+  if (selectedSort === 'popular') {
+    posts.sort((left, right) => {
+      const leftStats = postStats.get(left.id) || { score: 0 };
+      const rightStats = postStats.get(right.id) || { score: 0 };
+
+      if (rightStats.score !== leftStats.score) {
+        return rightStats.score - leftStats.score;
+      }
+
+      return new Date(right.created_at).getTime() - new Date(left.created_at).getTime();
+    });
   }
 
   return (
@@ -61,7 +142,7 @@ export default async function Home({ searchParams }: HomePageProps) {
         {categoryFilters.map((filter) => (
           <Link
             key={filter.value}
-            href={filter.value === 'All' ? '/' : `/?category=${filter.value}`}
+            href={buildHomeHref(filter.value, selectedSort)}
             className={`px-3 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition-colors ${
               selectedCategory === filter.value
                 ? 'bg-white text-black'
@@ -73,10 +154,27 @@ export default async function Home({ searchParams }: HomePageProps) {
         ))}
       </div>
 
+      <div className="flex gap-2 px-4 py-2 overflow-x-auto no-scrollbar border-b border-white/5">
+        {sortFilters.map((filter) => (
+          <Link
+            key={filter.value}
+            href={buildHomeHref(selectedCategory, filter.value)}
+            className={`px-3 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition-colors ${
+              selectedSort === filter.value
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-900 text-gray-400 border border-gray-800'
+            }`}
+          >
+            {filter.label}
+          </Link>
+        ))}
+      </div>
+
       <main>
-        {posts && posts.length > 0 ? (
+        {posts.length > 0 ? (
           posts.map((post) => {
             const profile = Array.isArray(post.profiles) ? post.profiles[0] : post.profiles;
+            const stats = postStats.get(post.id) || { likeCount: 0, commentCount: 0 };
 
             return (
               <FeedItem
@@ -89,6 +187,8 @@ export default async function Home({ searchParams }: HomePageProps) {
                 tags={post.tags}
                 author={profile?.username || '알 수 없음'}
                 date={post.created_at}
+                likeCount={stats.likeCount}
+                commentCount={stats.commentCount}
               />
             );
           })
