@@ -18,7 +18,7 @@ export function ClassReservationButton({
   classId,
   classTitle,
   initialReserved = false,
-  loginNext = '/fencing?tab=classes',
+  loginNext = '/fencing/classes',
   className,
 }: ClassReservationButtonProps) {
   const router = useRouter();

@@ -12,6 +12,8 @@ export default function ProfileSetupPage() {
     const [username, setUsername] = useState('');
     const [weaponType, setWeaponType] = useState('Fleuret');
     const [userType, setUserType] = useState('동호인');
+    const [clubId, setClubId] = useState('none');
+    const [clubs, setClubs] = useState<{ id: string; name: string }[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const router = useRouter();
@@ -33,7 +35,24 @@ export default function ProfileSetupPage() {
 
             if (profile?.username) {
                 router.replace('/');
+                return;
             }
+
+            const { data: clubRows, error: clubsError } = await supabase
+                .from('fencing_clubs')
+                .select('id, name')
+                .order('name', { ascending: true })
+                .limit(100);
+
+            if (clubsError) {
+                // `fencing_clubs` may not exist yet in local/dev DB.
+                if (clubsError.code !== '42P01') {
+                    console.error('Failed to load fencing clubs:', clubsError);
+                }
+                return;
+            }
+
+            setClubs(clubRows || []);
         };
         checkUser();
     }, [router, supabase]);
@@ -64,6 +83,7 @@ export default function ProfileSetupPage() {
                 username: trimmedUsername,
                 weapon_type: weaponType,
                 user_type: userType,
+                club_id: clubId === 'none' ? null : clubId,
                 tier: 'Bronze',
                 is_coach: userType === '코치 및 감독',
                 updated_at: new Date().toISOString(),
@@ -129,6 +149,24 @@ export default function ProfileSetupPage() {
                                     <SelectItem value="동호인">동호인</SelectItem>
                                     <SelectItem value="엘리트">엘리트</SelectItem>
                                     <SelectItem value="코치 및 감독">코치 및 감독</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        <div className="flex h-10 w-full items-center justify-between rounded-md border border-gray-800 bg-black px-3 py-2 text-sm">
+                            <span className="text-gray-500">소속 클럽</span>
+                            <Select value={clubId} onValueChange={setClubId}>
+                                <SelectTrigger className="w-[140px] border-none bg-transparent p-0 h-auto text-white focus:ring-0 focus:ring-offset-0 shadow-none justify-end gap-2 hover:bg-transparent data-[state=open]:bg-transparent">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="bg-gray-900 border-gray-800 text-white max-h-64">
+                                    <SelectItem value="none">미설정</SelectItem>
+                                    {clubs.map((club) => (
+                                        <SelectItem key={club.id} value={club.id}>
+                                            {club.name}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>

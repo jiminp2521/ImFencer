@@ -58,7 +58,7 @@ export default async function ProfilePage() {
   ] = await Promise.all([
     supabase
       .from('profiles')
-      .select('username, weapon_type, tier, avatar_url, user_type')
+      .select('username, weapon_type, tier, avatar_url, user_type, club_id')
       .eq('id', user.id)
       .maybeSingle(),
     supabase.from('posts').select('id').eq('author_id', user.id),
@@ -132,8 +132,21 @@ export default async function ProfilePage() {
   }
 
   const profile = profileResult.data;
+  const clubResult = profile?.club_id
+    ? await supabase
+        .from('fencing_clubs')
+        .select('name')
+        .eq('id', profile.club_id)
+        .maybeSingle()
+    : { data: null, error: null };
+
+  if (clubResult.error && clubResult.error.code !== '42P01') {
+    console.error('Error fetching my club:', clubResult.error);
+  }
+
   const displayName = profile?.username || user.email?.split('@')[0] || 'Fencer';
   const weaponLabel = profile?.weapon_type ? weaponMap[profile.weapon_type] || profile.weapon_type : '미설정';
+  const clubName = clubResult.data?.name || null;
 
   const recentPosts = recentPostsResult.data || [];
   const bookmarkedPosts = ((bookmarkedPostsResult.data || []) as unknown as BookmarkedPostRow[])
@@ -163,6 +176,7 @@ export default async function ProfilePage() {
             <p className="text-sm text-gray-400">
               {weaponLabel}
               {profile?.user_type ? ` • ${profile.user_type}` : ''}
+              {clubName ? ` • ${clubName}` : ''}
             </p>
             <p className="text-xs text-gray-500">{user.email}</p>
           </div>

@@ -100,7 +100,7 @@ export default function LessonWritePage() {
       }
 
       alert('레슨이 등록되었습니다.');
-      router.push('/fencing?tab=lessons');
+      router.push('/fencing/lessons');
       router.refresh();
     } finally {
       setPending(false);
@@ -111,7 +111,7 @@ export default function LessonWritePage() {
     <div className="min-h-screen pb-24">
       <header className="sticky top-0 z-40 bg-black/80 backdrop-blur-md border-b border-white/10 px-4 h-14 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Link href="/fencing?tab=lessons" className="text-gray-400 hover:text-white transition-colors">
+          <Link href="/fencing/lessons" className="text-gray-400 hover:text-white transition-colors">
             <ChevronLeft className="h-5 w-5" />
           </Link>
           <h1 className="text-base font-semibold text-white">레슨 등록</h1>

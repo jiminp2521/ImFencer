@@ -464,3 +464,5 @@ create index if not exists idx_fencing_lesson_products_coach_id
   on public.fencing_lesson_products(coach_id);
 create index if not exists idx_fencing_lesson_orders_buyer_id
   on public.fencing_lesson_orders(buyer_id);
+create index if not exists idx_profiles_club_id
+  on public.profiles(club_id);

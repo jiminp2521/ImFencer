@@ -22,7 +22,7 @@ export function LessonOrderButton({
   coachId,
   currentUserId,
   initialOrdered = false,
-  loginNext = '/fencing?tab=lessons',
+  loginNext = '/fencing/lessons',
   className,
 }: LessonOrderButtonProps) {
   const router = useRouter();
