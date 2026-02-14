@@ -128,7 +128,12 @@ export default async function PostDetailPage({ params }: PostPageProps) {
             <Badge variant="outline" className="border-gray-700 text-gray-400 bg-transparent text-[10px] px-1.5 py-0 h-5">
               {categoryMap[post.category] || post.category}
             </Badge>
-            <span className="font-medium text-gray-300">{profile?.username || '알 수 없음'}</span>
+            <Link
+              href={`/users/${post.author_id}?next=${encodeURIComponent(`/posts/${post.id}`)}`}
+              className="font-medium text-gray-300 hover:text-white transition-colors"
+            >
+              {profile?.username || '알 수 없음'}
+            </Link>
             {profile?.weapon_type && <span>• {profile.weapon_type}</span>}
             <span>•</span>
             <span>{createdAt}</span>
