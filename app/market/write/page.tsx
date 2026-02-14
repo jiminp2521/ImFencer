@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ChevronLeft, Loader2 } from 'lucide-react';
+import { ChevronLeft, ImagePlus, Loader2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,8 +20,22 @@ export default function MarketWritePage() {
   const [weaponType, setWeaponType] = useState('Epee');
   const [brand, setBrand] = useState('');
   const [condition, setCondition] = useState('중고');
-  const [imageUrl, setImageUrl] = useState('');
+  const [imageUrlInput, setImageUrlInput] = useState('');
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const imagePreviewUrl = useMemo(() => {
+    if (!imageFile) return null;
+    return URL.createObjectURL(imageFile);
+  }, [imageFile]);
+
+  useEffect(() => {
+    return () => {
+      if (imagePreviewUrl) {
+        URL.revokeObjectURL(imagePreviewUrl);
+      }
+    };
+  }, [imagePreviewUrl]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -46,6 +60,31 @@ export default function MarketWritePage() {
       return;
     }
 
+    let finalImageUrl = imageUrlInput.trim() || null;
+
+    if (imageFile) {
+      const extension = imageFile.name.includes('.') ? imageFile.name.split('.').pop() : 'jpg';
+      const safeExtension = extension ? extension.toLowerCase() : 'jpg';
+      const filePath = `market/${user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${safeExtension}`;
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('images')
+        .upload(filePath, imageFile, {
+          cacheControl: '3600',
+          upsert: false,
+        });
+
+      if (uploadError || !uploadData) {
+        console.error('Error uploading market image:', uploadError);
+        alert('이미지 업로드에 실패했습니다.');
+        setSubmitting(false);
+        return;
+      }
+
+      const { data: publicData } = supabase.storage.from('images').getPublicUrl(uploadData.path);
+      finalImageUrl = publicData.publicUrl;
+    }
+
     const { data, error } = await supabase
       .from('market_items')
       .insert({
@@ -57,7 +96,7 @@ export default function MarketWritePage() {
         weapon_type: weaponType,
         brand: brand.trim() || null,
         condition,
-        image_url: imageUrl.trim() || null,
+        image_url: finalImageUrl,
       })
       .select('id')
       .single();
@@ -135,13 +174,39 @@ export default function MarketWritePage() {
             maxLength={40}
           />
 
-          <Input
-            value={imageUrl}
-            onChange={(event) => setImageUrl(event.target.value)}
-            placeholder="이미지 URL (선택)"
-            className="border-gray-800 bg-gray-950 text-gray-100 placeholder:text-gray-500"
-            type="url"
-          />
+          <div className="space-y-2">
+            <label
+              htmlFor="market-image-file"
+              className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-gray-700 bg-gray-950 py-4 text-sm text-gray-300 hover:border-gray-500 hover:text-gray-200 transition-colors"
+            >
+              <ImagePlus className="w-4 h-4" />
+              <span>{imageFile ? '이미지 변경' : '이미지 업로드'}</span>
+            </label>
+            <Input
+              id="market-image-file"
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(event) => {
+                const selected = event.target.files?.[0] || null;
+                setImageFile(selected);
+              }}
+            />
+            {imagePreviewUrl && (
+              <img
+                src={imagePreviewUrl}
+                alt="업로드 미리보기"
+                className="w-full max-h-56 rounded-md border border-white/10 object-cover"
+              />
+            )}
+            <Input
+              value={imageUrlInput}
+              onChange={(event) => setImageUrlInput(event.target.value)}
+              placeholder="또는 이미지 URL 입력 (선택)"
+              className="border-gray-800 bg-gray-950 text-gray-100 placeholder:text-gray-500"
+              type="url"
+            />
+          </div>
 
           <Textarea
             value={description}

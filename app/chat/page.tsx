@@ -16,6 +16,10 @@ type ParticipantRow = {
   } | null;
 };
 
+type UnreadRow = {
+  chat_id: string;
+};
+
 export default async function ChatPage({ searchParams }: ChatPageProps) {
   const resolvedSearchParams = await searchParams;
   const supabase = await createClient();
@@ -60,7 +64,20 @@ export default async function ChatPage({ searchParams }: ChatPageProps) {
       ? resolvedSearchParams.chat
       : chatIds[0] || null;
 
-  const [chatsResult, partnerResult, messagesResult] = await Promise.all([
+  if (selectedChatId) {
+    const { error: markReadError } = await supabase
+      .from('messages')
+      .update({ read_at: new Date().toISOString() })
+      .eq('chat_id', selectedChatId)
+      .neq('sender_id', user.id)
+      .is('read_at', null);
+
+    if (markReadError) {
+      console.error('Error updating message read state:', markReadError);
+    }
+  }
+
+  const [chatsResult, partnerResult, messagesResult, unreadRowsResult] = await Promise.all([
     chatIds.length > 0
       ? supabase
           .from('chats')
@@ -92,6 +109,14 @@ export default async function ChatPage({ searchParams }: ChatPageProps) {
           .eq('chat_id', selectedChatId)
           .order('created_at', { ascending: true })
       : Promise.resolve({ data: [], error: null }),
+    chatIds.length > 0
+      ? supabase
+          .from('messages')
+          .select('chat_id')
+          .in('chat_id', chatIds)
+          .neq('sender_id', user.id)
+          .is('read_at', null)
+      : Promise.resolve({ data: [], error: null }),
   ]);
 
   if (chatsResult.error) {
@@ -103,6 +128,9 @@ export default async function ChatPage({ searchParams }: ChatPageProps) {
   if (messagesResult.error) {
     console.error('Error fetching messages:', messagesResult.error);
   }
+  if (unreadRowsResult.error) {
+    console.error('Error fetching unread counts:', unreadRowsResult.error);
+  }
 
   const partnerMap = new Map<string, string>();
   for (const participant of (partnerResult.data || []) as unknown as ParticipantRow[]) {
@@ -112,6 +140,11 @@ export default async function ChatPage({ searchParams }: ChatPageProps) {
 
   const chats = chatsResult.data || [];
   const messages = messagesResult.data || [];
+  const unreadCountMap = new Map<string, number>();
+
+  for (const row of (unreadRowsResult.data || []) as unknown as UnreadRow[]) {
+    unreadCountMap.set(row.chat_id, (unreadCountMap.get(row.chat_id) || 0) + 1);
+  }
 
   return (
     <div className="min-h-screen pb-20">
@@ -134,12 +167,19 @@ export default async function ChatPage({ searchParams }: ChatPageProps) {
                 >
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-sm font-semibold text-white">{partnerMap.get(chat.id) || '채팅방'}</p>
-                    <span className="text-[11px] text-gray-500">
-                      {new Date(chat.updated_at).toLocaleDateString('ko-KR', {
-                        month: 'short',
-                        day: 'numeric',
-                      })}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      {unreadCountMap.get(chat.id) ? (
+                        <span className="inline-flex min-w-5 h-5 px-1.5 items-center justify-center rounded-full bg-red-500 text-[10px] font-semibold text-white">
+                          {unreadCountMap.get(chat.id)}
+                        </span>
+                      ) : null}
+                      <span className="text-[11px] text-gray-500">
+                        {new Date(chat.updated_at).toLocaleDateString('ko-KR', {
+                          month: 'short',
+                          day: 'numeric',
+                        })}
+                      </span>
+                    </div>
                   </div>
                   <p className="mt-1 text-xs text-gray-400 line-clamp-1">{chat.last_message || '새 대화가 시작되었습니다.'}</p>
                 </Link>
