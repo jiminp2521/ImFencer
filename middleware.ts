@@ -37,7 +37,7 @@ export async function middleware(request: NextRequest) {
 
     // Protected Routes Logic
     const path = request.nextUrl.pathname;
-    if (!user && (path.startsWith('/write') || path.startsWith('/profile'))) {
+    if (!user && (path.startsWith('/write') || path.startsWith('/profile') || path.startsWith('/market/write'))) {
         // Redirect unauthenticated users to login page
         const url = request.nextUrl.clone()
         url.pathname = '/login'

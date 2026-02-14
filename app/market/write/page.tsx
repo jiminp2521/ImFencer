@@ -1,0 +1,166 @@
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { ChevronLeft, Loader2 } from 'lucide-react';
+import { createClient } from '@/lib/supabase';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+export default function MarketWritePage() {
+  const router = useRouter();
+  const supabase = createClient();
+
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [price, setPrice] = useState('');
+  const [weaponType, setWeaponType] = useState('Epee');
+  const [brand, setBrand] = useState('');
+  const [condition, setCondition] = useState('중고');
+  const [imageUrl, setImageUrl] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (submitting) return;
+
+    const numericPrice = Number(price);
+    if (!Number.isFinite(numericPrice) || numericPrice <= 0) {
+      alert('가격을 올바르게 입력해주세요.');
+      return;
+    }
+
+    setSubmitting(true);
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      alert('로그인이 필요합니다.');
+      router.push('/login?next=/market/write');
+      setSubmitting(false);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('market_items')
+      .insert({
+        seller_id: user.id,
+        title: title.trim(),
+        description: description.trim(),
+        price: Math.round(numericPrice),
+        status: 'selling',
+        weapon_type: weaponType,
+        brand: brand.trim() || null,
+        condition,
+        image_url: imageUrl.trim() || null,
+      })
+      .select('id')
+      .single();
+
+    if (error || !data) {
+      console.error('Error creating market item:', error);
+      alert('판매글 등록에 실패했습니다.');
+      setSubmitting(false);
+      return;
+    }
+
+    router.push(`/market/${data.id}`);
+    router.refresh();
+  };
+
+  return (
+    <div className="min-h-screen pb-20 bg-black">
+      <header className="sticky top-0 z-40 bg-black/90 backdrop-blur border-b border-white/10 h-14 px-4 flex items-center justify-between">
+        <Link href="/market" className="text-gray-400 hover:text-white transition-colors">
+          <ChevronLeft className="w-6 h-6" />
+        </Link>
+        <h1 className="text-base font-semibold text-white">판매글 등록</h1>
+        <div className="w-6" />
+      </header>
+
+      <main className="p-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Input
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            placeholder="상품명"
+            className="border-gray-800 bg-gray-950 text-gray-100 placeholder:text-gray-500"
+            required
+            maxLength={80}
+          />
+
+          <Input
+            value={price}
+            onChange={(event) => setPrice(event.target.value.replace(/[^0-9]/g, ''))}
+            placeholder="가격 (원)"
+            className="border-gray-800 bg-gray-950 text-gray-100 placeholder:text-gray-500"
+            inputMode="numeric"
+            required
+          />
+
+          <div className="grid grid-cols-2 gap-3">
+            <Select value={weaponType} onValueChange={setWeaponType}>
+              <SelectTrigger className="border-gray-800 bg-gray-950 text-gray-100">
+                <SelectValue placeholder="종목" />
+              </SelectTrigger>
+              <SelectContent className="bg-gray-950 border-gray-800 text-gray-100">
+                <SelectItem value="Epee">에페</SelectItem>
+                <SelectItem value="Sabre">사브르</SelectItem>
+                <SelectItem value="Fleuret">플뢰레</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={condition} onValueChange={setCondition}>
+              <SelectTrigger className="border-gray-800 bg-gray-950 text-gray-100">
+                <SelectValue placeholder="상태" />
+              </SelectTrigger>
+              <SelectContent className="bg-gray-950 border-gray-800 text-gray-100">
+                <SelectItem value="미개봉">미개봉</SelectItem>
+                <SelectItem value="거의 새것">거의 새것</SelectItem>
+                <SelectItem value="중고">중고</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Input
+            value={brand}
+            onChange={(event) => setBrand(event.target.value)}
+            placeholder="브랜드 (선택)"
+            className="border-gray-800 bg-gray-950 text-gray-100 placeholder:text-gray-500"
+            maxLength={40}
+          />
+
+          <Input
+            value={imageUrl}
+            onChange={(event) => setImageUrl(event.target.value)}
+            placeholder="이미지 URL (선택)"
+            className="border-gray-800 bg-gray-950 text-gray-100 placeholder:text-gray-500"
+            type="url"
+          />
+
+          <Textarea
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+            placeholder="상품 설명"
+            className="min-h-36 border-gray-800 bg-gray-950 text-gray-100 placeholder:text-gray-500"
+            required
+            maxLength={2000}
+          />
+
+          <Button
+            type="submit"
+            className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white"
+            disabled={submitting || !title.trim() || !description.trim() || !price}
+          >
+            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : '등록하기'}
+          </Button>
+        </form>
+      </main>
+    </div>
+  );
+}

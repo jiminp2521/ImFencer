@@ -152,6 +152,27 @@ create policy "Users can update messages in joined chats."
     )
   );
 
+drop policy if exists "Authenticated users can create chats." on public.chats;
+create policy "Authenticated users can create chats."
+  on public.chats for insert
+  with check ( auth.role() = 'authenticated' );
+
+drop policy if exists "Users can insert themselves as chat participants." on public.chat_participants;
+create policy "Users can insert themselves as chat participants."
+  on public.chat_participants for insert
+  with check ( auth.uid() = user_id );
+
+drop policy if exists "Participants can add users to their chats." on public.chat_participants;
+create policy "Participants can add users to their chats."
+  on public.chat_participants for insert
+  with check (
+    exists (
+      select 1 from public.chat_participants cp
+      where cp.chat_id = chat_participants.chat_id
+      and cp.user_id = auth.uid()
+    )
+  );
+
 create index if not exists idx_comments_post_created_at
   on public.comments(post_id, created_at desc);
 create index if not exists idx_comments_parent_id

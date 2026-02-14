@@ -258,6 +258,22 @@ create policy "Users can view chat participants for their chats."
     and cp.user_id = auth.uid()
   ));
 
+create policy "Authenticated users can create chats."
+  on chats for insert
+  with check ( auth.role() = 'authenticated' );
+
+create policy "Users can insert themselves as chat participants."
+  on chat_participants for insert
+  with check ( auth.uid() = user_id );
+
+create policy "Participants can add users to their chats."
+  on chat_participants for insert
+  with check ( exists (
+    select 1 from chat_participants cp
+    where cp.chat_id = chat_participants.chat_id
+    and cp.user_id = auth.uid()
+  ));
+
 create policy "Users can view messages for joined chats."
   on messages for select
   using ( exists (
