@@ -1,10 +1,9 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, Loader2 } from 'lucide-react';
-import { createClient } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -25,7 +24,6 @@ const weaponOptions = [
 
 export default function LessonWritePage() {
   const router = useRouter();
-  const supabase = useMemo(() => createClient(), []);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [lessonMode, setLessonMode] = useState('offline');
@@ -69,32 +67,32 @@ export default function LessonWritePage() {
     setPending(true);
 
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const response = await fetch('/api/fencing/lessons', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: normalizedTitle,
+          description: normalizedDescription || null,
+          price: parsedPrice,
+          lesson_mode: lessonMode,
+          location_text: locationText.trim() || null,
+          weapon_type: weaponType === 'All' ? null : weaponType,
+          duration_minutes: parsedDuration,
+          max_students: parsedMaxStudents,
+        }),
+      });
 
-      if (!user) {
+      if (response.status === 401) {
         alert('로그인이 필요합니다.');
         router.push('/login?next=%2Ffencing%2Flessons%2Fwrite');
         return;
       }
 
-      const { error } = await supabase.from('fencing_lesson_products').insert({
-        coach_id: user.id,
-        title: normalizedTitle,
-        description: normalizedDescription || null,
-        price: parsedPrice,
-        lesson_mode: lessonMode,
-        location_text: locationText.trim() || null,
-        weapon_type: weaponType === 'All' ? null : weaponType,
-        duration_minutes: parsedDuration,
-        max_students: parsedMaxStudents,
-        is_active: true,
-        updated_at: new Date().toISOString(),
-      });
-
-      if (error) {
-        console.error('Error creating lesson product:', error);
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        console.error('Error creating lesson product:', body);
         alert('레슨 등록에 실패했습니다.');
         return;
       }

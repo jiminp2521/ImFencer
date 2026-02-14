@@ -57,43 +57,49 @@ export function MarketWriteForm({ editId }: MarketWriteFormProps) {
 
       setLoadingEditData(true);
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      try {
+        const response = await fetch(`/api/market/items/${editId}`, { method: 'GET' });
 
-      if (!user) {
-        alert('로그인이 필요합니다.');
-        router.push(`/login?next=/market/write?edit=${editId}`);
-        return;
+        if (response.status === 401) {
+          alert('로그인이 필요합니다.');
+          router.push(`/login?next=/market/write?edit=${editId}`);
+          return;
+        }
+
+        if (!response.ok) {
+          alert('수정할 판매글을 찾을 수 없습니다.');
+          router.push('/market');
+          return;
+        }
+
+        const body = (await response.json()) as {
+          item: {
+            title: string | null;
+            description: string | null;
+            price: number | null;
+            weapon_type: string | null;
+            brand: string | null;
+            condition: string | null;
+            image_url: string | null;
+          };
+        };
+
+        const item = body.item;
+        setTitle(item.title || '');
+        setDescription(item.description || '');
+        setPrice(item.price ? String(item.price) : '');
+        setWeaponType(item.weapon_type || 'Epee');
+        setBrand(item.brand || '');
+        setCondition(item.condition || '중고');
+        setImageUrlInput(item.image_url || '');
+        setLoadedEditId(editId);
+      } finally {
+        setLoadingEditData(false);
       }
-
-      const { data: item, error } = await supabase
-        .from('market_items')
-        .select('id, seller_id, title, description, price, weapon_type, brand, condition, image_url')
-        .eq('id', editId)
-        .eq('seller_id', user.id)
-        .single();
-
-      if (error || !item) {
-        console.error('Error loading market item to edit:', error);
-        alert('수정할 판매글을 찾을 수 없습니다.');
-        router.push('/market');
-        return;
-      }
-
-      setTitle(item.title || '');
-      setDescription(item.description || '');
-      setPrice(String(item.price || ''));
-      setWeaponType(item.weapon_type || 'Epee');
-      setBrand(item.brand || '');
-      setCondition(item.condition || '중고');
-      setImageUrlInput(item.image_url || '');
-      setLoadedEditId(editId);
-      setLoadingEditData(false);
     };
 
     loadEditData();
-  }, [editId, loadedEditId, router, supabase]);
+  }, [editId, loadedEditId, router]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -107,79 +113,75 @@ export function MarketWriteForm({ editId }: MarketWriteFormProps) {
 
     setSubmitting(true);
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      alert('로그인이 필요합니다.');
-      router.push('/login?next=/market/write');
-      setSubmitting(false);
-      return;
-    }
-
     let finalImageUrl = imageUrlInput.trim() || null;
 
-    if (imageFile) {
-      const extension = imageFile.name.includes('.') ? imageFile.name.split('.').pop() : 'jpg';
-      const safeExtension = extension ? extension.toLowerCase() : 'jpg';
-      const filePath = `market/${user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${safeExtension}`;
-
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('images')
-        .upload(filePath, imageFile, {
-          cacheControl: '3600',
-          upsert: false,
-        });
-
-      if (uploadError || !uploadData) {
-        console.error('Error uploading market image:', uploadError);
-        alert('이미지 업로드에 실패했습니다.');
-        setSubmitting(false);
+    try {
+      const meResponse = await fetch('/api/me');
+      if (meResponse.status === 401) {
+        alert('로그인이 필요합니다.');
+        router.push('/login?next=/market/write');
         return;
       }
 
-      const { data: publicData } = supabase.storage.from('images').getPublicUrl(uploadData.path);
-      finalImageUrl = publicData.publicUrl;
-    }
+      if (imageFile) {
+        const extension = imageFile.name.includes('.') ? imageFile.name.split('.').pop() : 'jpg';
+        const safeExtension = extension ? extension.toLowerCase() : 'jpg';
+        const filePath = `market/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${safeExtension}`;
 
-    const payload = {
-      title: title.trim(),
-      description: description.trim(),
-      price: Math.round(numericPrice),
-      weapon_type: weaponType,
-      brand: brand.trim() || null,
-      condition,
-      image_url: finalImageUrl,
-    };
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('images')
+          .upload(filePath, imageFile, {
+            cacheControl: '3600',
+            upsert: false,
+          });
 
-    const { data, error } = editId
-      ? await supabase
-          .from('market_items')
-          .update(payload)
-          .eq('id', editId)
-          .eq('seller_id', user.id)
-          .select('id')
-          .single()
-      : await supabase
-          .from('market_items')
-          .insert({
-            seller_id: user.id,
-            ...payload,
-            status: 'selling',
-          })
-          .select('id')
-          .single();
+        if (uploadError || !uploadData) {
+          console.error('Error uploading market image:', uploadError);
+          alert('이미지 업로드에 실패했습니다.');
+          return;
+        }
 
-    if (error || !data) {
-      console.error('Error saving market item:', error);
-      alert(editId ? '판매글 수정에 실패했습니다.' : '판매글 등록에 실패했습니다.');
+        const { data: publicData } = supabase.storage.from('images').getPublicUrl(uploadData.path);
+        finalImageUrl = publicData.publicUrl;
+      }
+
+      const payload = {
+        title: title.trim(),
+        description: description.trim(),
+        price: Math.round(numericPrice),
+        weapon_type: weaponType,
+        brand: brand.trim() || null,
+        condition,
+        image_url: finalImageUrl,
+      };
+
+      const response = await fetch(editId ? `/api/market/items/${editId}` : '/api/market/items', {
+        method: editId ? 'PATCH' : 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.status === 401) {
+        alert('로그인이 필요합니다.');
+        router.push('/login?next=/market/write');
+        return;
+      }
+
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        console.error('Error saving market item:', body);
+        alert(editId ? '판매글 수정에 실패했습니다.' : '판매글 등록에 실패했습니다.');
+        return;
+      }
+
+      const body = (await response.json()) as { id: string };
+      router.push(`/market/${body.id}`);
+      router.refresh();
+    } finally {
       setSubmitting(false);
-      return;
     }
-
-    router.push(`/market/${data.id}`);
-    router.refresh();
   };
 
   return (

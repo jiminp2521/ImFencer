@@ -1,14 +1,12 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CheckCheck, Loader2 } from 'lucide-react';
-import { createClient } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 
 export function MarkAllNotificationsReadButton() {
   const router = useRouter();
-  const supabase = useMemo(() => createClient(), []);
   const [pending, setPending] = useState(false);
 
   const handleMarkAllRead = async () => {
@@ -16,20 +14,10 @@ export function MarkAllNotificationsReadButton() {
     setPending(true);
 
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) return;
-
-      const { error } = await supabase
-        .from('notifications')
-        .update({ is_read: true })
-        .eq('user_id', user.id)
-        .eq('is_read', false);
-
-      if (error) {
-        console.error('Error marking all notifications as read:', error);
+      const response = await fetch('/api/notifications/read-all', { method: 'POST' });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        console.error('Error marking all notifications as read:', body);
         return;
       }
 

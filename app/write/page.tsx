@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -21,39 +20,42 @@ export default function WritePage() {
     const [category, setCategory] = useState('Free');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const router = useRouter();
-    const supabase = createClient();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
 
-        // Get current user
-        const { data: { user } } = await supabase.auth.getUser();
-
-        if (!user) {
-            alert('로그인이 필요합니다.');
-            router.push('/login');
-            return;
-        }
-
-        // Insert post
-        const { error } = await supabase
-            .from('posts')
-            .insert({
-                title,
-                content,
-                category,
-                author_id: user.id,
-                tags: [], // Optional: Add tag input later
+        try {
+            const response = await fetch('/api/posts', {
+                method: 'POST',
+                headers: {
+                    'content-type': 'application/json',
+                },
+                body: JSON.stringify({
+                    title: title.trim(),
+                    content: content.trim(),
+                    category,
+                    tags: [],
+                }),
             });
 
-        if (error) {
-            console.error(error);
-            alert('게시글 작성에 실패했습니다.');
-            setIsSubmitting(false);
-        } else {
+            if (response.status === 401) {
+                alert('로그인이 필요합니다.');
+                router.push('/login?next=%2Fwrite');
+                return;
+            }
+
+            if (!response.ok) {
+                const body = (await response.json().catch(() => null)) as { error?: string } | null;
+                console.error('Create post failed:', body);
+                alert('게시글 작성에 실패했습니다.');
+                return;
+            }
+
             router.push('/');
             router.refresh();
+        } finally {
+            setIsSubmitting(false);
         }
     };
 

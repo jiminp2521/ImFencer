@@ -1,9 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Check, Loader2, MapPinned } from 'lucide-react';
-import { createClient } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 
 type SetMyClubButtonProps = {
@@ -22,7 +21,6 @@ export function SetMyClubButton({
   isCurrent = false,
 }: SetMyClubButtonProps) {
   const router = useRouter();
-  const supabase = useMemo(() => createClient(), []);
   const [pending, setPending] = useState(false);
   const [selected, setSelected] = useState(isCurrent);
 
@@ -31,24 +29,23 @@ export function SetMyClubButton({
     setPending(true);
 
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const response = await fetch('/api/profile/club', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ clubId }),
+      });
 
-      if (!user) {
+      if (response.status === 401) {
         alert('로그인이 필요합니다.');
         router.push(`/login?next=${encodeURIComponent(loginNext)}`);
         return;
       }
 
-      const { error } = await supabase.from('profiles').upsert({
-        id: user.id,
-        club_id: clubId,
-        updated_at: new Date().toISOString(),
-      });
-
-      if (error) {
-        console.error('Error setting my club:', error);
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        console.error('Error setting my club:', body);
         alert('클럽 설정에 실패했습니다.');
         return;
       }

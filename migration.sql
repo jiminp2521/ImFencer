@@ -111,6 +111,16 @@ create policy "Users can delete own market items."
   on public.market_items for delete
   using ( auth.uid() = seller_id );
 
+drop policy if exists "Authenticated users can create market items." on public.market_items;
+create policy "Authenticated users can create market items."
+  on public.market_items for insert
+  with check ( auth.uid() = seller_id );
+
+drop policy if exists "Authenticated users can create posts." on public.posts;
+create policy "Authenticated users can create posts."
+  on public.posts for insert
+  with check ( auth.uid() = author_id );
+
 -- MESSAGES
 create table if not exists public.messages (
   id uuid default uuid_generate_v4() primary key,
@@ -161,6 +171,17 @@ drop policy if exists "Authenticated users can create chats." on public.chats;
 create policy "Authenticated users can create chats."
   on public.chats for insert
   with check ( auth.role() = 'authenticated' );
+
+drop policy if exists "Participants can update chats." on public.chats;
+create policy "Participants can update chats."
+  on public.chats for update
+  using (
+    exists (
+      select 1 from public.chat_participants cp
+      where cp.chat_id = chats.id
+      and cp.user_id = auth.uid()
+    )
+  );
 
 drop policy if exists "Users can insert themselves as chat participants." on public.chat_participants;
 create policy "Users can insert themselves as chat participants."

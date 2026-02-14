@@ -1,9 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Check, Loader2 } from 'lucide-react';
-import { createClient } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 
 type MarkNotificationReadButtonProps = {
@@ -16,7 +15,6 @@ export function MarkNotificationReadButton({
   initialRead,
 }: MarkNotificationReadButtonProps) {
   const router = useRouter();
-  const supabase = useMemo(() => createClient(), []);
   const [pending, setPending] = useState(false);
   const [read, setRead] = useState(initialRead);
 
@@ -25,20 +23,10 @@ export function MarkNotificationReadButton({
     setPending(true);
 
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) return;
-
-      const { error } = await supabase
-        .from('notifications')
-        .update({ is_read: true })
-        .eq('id', notificationId)
-        .eq('user_id', user.id);
-
-      if (error) {
-        console.error('Error marking notification as read:', error);
+      const response = await fetch(`/api/notifications/${notificationId}/read`, { method: 'POST' });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        console.error('Error marking notification as read:', body);
         return;
       }
 

@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Pencil, Trash2 } from 'lucide-react';
-import { createClient } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 
 type MarketOwnerActionsProps = {
@@ -13,7 +12,6 @@ type MarketOwnerActionsProps = {
 
 export function MarketOwnerActions({ marketItemId }: MarketOwnerActionsProps) {
   const router = useRouter();
-  const supabase = createClient();
   const [deleting, setDeleting] = useState(false);
 
   const handleDelete = async () => {
@@ -24,17 +22,29 @@ export function MarketOwnerActions({ marketItemId }: MarketOwnerActionsProps) {
 
     setDeleting(true);
 
-    const { error } = await supabase.from('market_items').delete().eq('id', marketItemId);
+    try {
+      const response = await fetch(`/api/market/items/${marketItemId}`, {
+        method: 'DELETE',
+      });
 
-    if (error) {
-      console.error('Error deleting market item:', error);
-      alert('판매글 삭제에 실패했습니다.');
+      if (response.status === 401) {
+        alert('로그인이 필요합니다.');
+        router.push('/login?next=/market');
+        return;
+      }
+
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        console.error('Error deleting market item:', body);
+        alert('판매글 삭제에 실패했습니다.');
+        return;
+      }
+
+      router.push('/market');
+      router.refresh();
+    } finally {
       setDeleting(false);
-      return;
     }
-
-    router.push('/market');
-    router.refresh();
   };
 
   return (

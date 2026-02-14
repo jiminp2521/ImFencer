@@ -408,8 +408,6 @@ export default async function ActivityPage({ searchParams }: ActivityPageProps) 
                     <p className="text-[11px] text-gray-600">요청일: {formatDateTime(item.created_at)}</p>
                     <ClassReservationStatusActions
                       reservationId={item.id}
-                      buyerId={item.user_id}
-                      classTitle={classTitleMap.get(item.class_id) || '클래스'}
                       initialStatus={item.status}
                     />
                   </article>
@@ -442,8 +440,6 @@ export default async function ActivityPage({ searchParams }: ActivityPageProps) 
                     <p className="text-[11px] text-gray-600">요청일: {formatDateTime(item.created_at)}</p>
                     <LessonOrderStatusActions
                       orderId={item.id}
-                      buyerId={item.buyer_id}
-                      lessonTitle={lessonTitleMap.get(item.lesson_id) || '레슨'}
                       initialStatus={item.status}
                     />
                   </article>

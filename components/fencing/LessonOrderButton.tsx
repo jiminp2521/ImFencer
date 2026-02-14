@@ -1,11 +1,9 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, ShoppingCart } from 'lucide-react';
-import { createClient } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
-import { notifyUser } from '@/lib/notifications-client';
 
 type LessonOrderButtonProps = {
   lessonId: string;
@@ -27,7 +25,6 @@ export function LessonOrderButton({
   className,
 }: LessonOrderButtonProps) {
   const router = useRouter();
-  const supabase = useMemo(() => createClient(), []);
   const [pending, setPending] = useState(false);
   const [ordered, setOrdered] = useState(initialOrdered);
 
@@ -38,54 +35,35 @@ export function LessonOrderButton({
     setPending(true);
 
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const response = await fetch(`/api/fencing/lessons/${lessonId}/orders`, { method: 'POST' });
 
-      if (!user) {
+      if (response.status === 401) {
         alert('로그인이 필요합니다.');
         router.push(`/login?next=${encodeURIComponent(loginNext)}`);
         return;
       }
 
-      if (user.id === coachId) {
+      if (response.status === 400) {
         alert('본인이 등록한 레슨입니다.');
         return;
       }
 
-      const { error } = await supabase.from('fencing_lesson_orders').insert({
-        lesson_id: lessonId,
-        buyer_id: user.id,
-        status: 'requested',
-      });
-
-      if (error) {
-        if (error.code === '23505') {
-          setOrdered(true);
-          alert('이미 신청한 레슨입니다.');
-          return;
-        }
-
-        console.error('Error creating lesson order:', error);
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        console.error('Error creating lesson order:', body);
         alert('레슨 신청에 실패했습니다.');
+        return;
+      }
+
+      const body = (await response.json()) as { duplicate?: boolean };
+      if (body.duplicate) {
+        setOrdered(true);
+        alert('이미 신청한 레슨입니다.');
         return;
       }
 
       setOrdered(true);
       alert(`${lessonTitle} 레슨 신청이 접수되었습니다.`);
-
-      try {
-        await notifyUser(supabase, {
-          userId: coachId,
-          actorId: user.id,
-          type: 'order',
-          title: '새 레슨 신청이 도착했습니다.',
-          body: lessonTitle,
-          link: '/activity?view=manage',
-        });
-      } catch (notificationError) {
-        console.error('Error creating lesson order notification:', notificationError);
-      }
 
       router.refresh();
     } finally {

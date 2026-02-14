@@ -1,16 +1,13 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CalendarCheck2, Loader2 } from 'lucide-react';
-import { createClient } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
-import { notifyUser } from '@/lib/notifications-client';
 
 type ClassReservationButtonProps = {
   classId: string;
   classTitle: string;
-  notifyUserId?: string | null;
   initialReserved?: boolean;
   loginNext?: string;
   className?: string;
@@ -19,13 +16,11 @@ type ClassReservationButtonProps = {
 export function ClassReservationButton({
   classId,
   classTitle,
-  notifyUserId = null,
   initialReserved = false,
   loginNext = '/fencing/classes',
   className,
 }: ClassReservationButtonProps) {
   const router = useRouter();
-  const supabase = useMemo(() => createClient(), []);
   const [pending, setPending] = useState(false);
   const [reserved, setReserved] = useState(initialReserved);
 
@@ -34,51 +29,30 @@ export function ClassReservationButton({
     setPending(true);
 
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const response = await fetch(`/api/fencing/classes/${classId}/reservations`, { method: 'POST' });
 
-      if (!user) {
+      if (response.status === 401) {
         alert('로그인이 필요합니다.');
         router.push(`/login?next=${encodeURIComponent(loginNext)}`);
         return;
       }
 
-      const { error } = await supabase.from('fencing_class_reservations').insert({
-        class_id: classId,
-        user_id: user.id,
-        status: 'requested',
-      });
-
-      if (error) {
-        if (error.code === '23505') {
-          setReserved(true);
-          alert('이미 예약 요청한 클래스입니다.');
-          return;
-        }
-
-        console.error('Error creating class reservation:', error);
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        console.error('Error creating class reservation:', body);
         alert('클래스 예약에 실패했습니다.');
+        return;
+      }
+
+      const body = (await response.json()) as { duplicate?: boolean };
+      if (body.duplicate) {
+        setReserved(true);
+        alert('이미 예약 요청한 클래스입니다.');
         return;
       }
 
       setReserved(true);
       alert(`${classTitle} 예약 요청이 접수되었습니다.`);
-
-      if (notifyUserId) {
-        try {
-          await notifyUser(supabase, {
-            userId: notifyUserId,
-            actorId: user.id,
-            type: 'reservation',
-            title: '새 클래스 예약 요청이 도착했습니다.',
-            body: classTitle,
-            link: '/activity?view=manage',
-          });
-        } catch (notificationError) {
-          console.error('Error creating class reservation notification:', notificationError);
-        }
-      }
 
       router.refresh();
     } finally {

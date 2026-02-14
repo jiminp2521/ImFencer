@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import { createClient } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 
 const statusOptions = [
@@ -17,7 +16,6 @@ type MarketStatusActionsProps = {
 };
 
 export function MarketStatusActions({ marketItemId, initialStatus }: MarketStatusActionsProps) {
-  const supabase = createClient();
   const [status, setStatus] = useState(initialStatus);
   const [pending, setPending] = useState(false);
 
@@ -25,20 +23,31 @@ export function MarketStatusActions({ marketItemId, initialStatus }: MarketStatu
     if (pending || nextStatus === status) return;
     setPending(true);
 
-    const { error } = await supabase
-      .from('market_items')
-      .update({ status: nextStatus })
-      .eq('id', marketItemId);
+    try {
+      const response = await fetch(`/api/market/items/${marketItemId}`, {
+        method: 'PATCH',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ status: nextStatus }),
+      });
 
-    if (error) {
-      console.error('Error updating market status:', error);
-      alert('상태 변경에 실패했습니다.');
+      if (response.status === 401) {
+        alert('로그인이 필요합니다.');
+        return;
+      }
+
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        console.error('Error updating market status:', body);
+        alert('상태 변경에 실패했습니다.');
+        return;
+      }
+
+      setStatus(nextStatus);
+    } finally {
       setPending(false);
-      return;
     }
-
-    setStatus(nextStatus);
-    setPending(false);
   };
 
   return (

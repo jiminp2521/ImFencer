@@ -1,29 +1,22 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
-import { createClient } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
-import { notifyUser } from '@/lib/notifications-client';
 
 type LessonOrderStatus = 'requested' | 'accepted' | 'rejected' | 'paid' | 'cancelled' | 'completed';
 
 type LessonOrderStatusActionsProps = {
   orderId: string;
-  buyerId: string;
-  lessonTitle: string;
   initialStatus: LessonOrderStatus;
 };
 
 export function LessonOrderStatusActions({
   orderId,
-  buyerId,
-  lessonTitle,
   initialStatus,
 }: LessonOrderStatusActionsProps) {
   const router = useRouter();
-  const supabase = useMemo(() => createClient(), []);
   const [status, setStatus] = useState<LessonOrderStatus>(initialStatus);
   const [pending, setPending] = useState(false);
 
@@ -32,50 +25,27 @@ export function LessonOrderStatusActions({
     setPending(true);
 
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const response = await fetch(`/api/fencing/lesson-orders/${orderId}`, {
+        method: 'PATCH',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ status: nextStatus }),
+      });
 
-      if (!user) return;
+      if (response.status === 401) {
+        alert('로그인이 필요합니다.');
+        return;
+      }
 
-      const { error } = await supabase
-        .from('fencing_lesson_orders')
-        .update({
-          status: nextStatus,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', orderId);
-
-      if (error) {
-        console.error('Error updating lesson order status:', error);
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        console.error('Error updating lesson order status:', body);
         alert('신청 상태 변경에 실패했습니다.');
         return;
       }
 
       setStatus(nextStatus);
-
-      try {
-        const statusTextMap: Record<LessonOrderStatus, string> = {
-          requested: '접수',
-          accepted: '승인',
-          rejected: '거절',
-          paid: '결제 완료',
-          cancelled: '취소',
-          completed: '완료',
-        };
-
-        await notifyUser(supabase, {
-          userId: buyerId,
-          actorId: user.id,
-          type: 'order',
-          title: `레슨 신청이 ${statusTextMap[nextStatus]}되었습니다.`,
-          body: lessonTitle,
-          link: '/activity',
-        });
-      } catch (notificationError) {
-        console.error('Error creating lesson order status notification:', notificationError);
-      }
-
       router.refresh();
     } finally {
       setPending(false);

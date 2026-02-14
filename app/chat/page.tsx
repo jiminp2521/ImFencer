@@ -240,7 +240,7 @@ export default async function ChatPage({ searchParams }: ChatPageProps) {
                     <p className="py-10 text-center text-sm text-gray-500">아직 메시지가 없습니다.</p>
                   )}
                 </div>
-                <ChatComposer chatId={selectedChatId} senderId={user.id} />
+                <ChatComposer chatId={selectedChatId} />
               </>
             ) : (
               <div className="flex-1 flex items-center justify-center text-sm text-gray-500">

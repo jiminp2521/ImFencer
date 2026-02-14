@@ -69,7 +69,7 @@ create policy "Posts are viewable by everyone."
 
 create policy "Authenticated users can create posts."
   on posts for insert
-  with check ( auth.role() = 'authenticated' );
+  with check ( auth.uid() = author_id );
 
 create policy "Users can update own posts."
   on posts for update
@@ -192,7 +192,7 @@ create policy "Market items are viewable by everyone."
 
 create policy "Authenticated users can create market items."
   on market_items for insert
-  with check ( auth.role() = 'authenticated' );
+  with check ( auth.uid() = seller_id );
 
 create policy "Users can update own market items."
   on market_items for update
@@ -265,6 +265,14 @@ create policy "Users can view chat participants for their chats."
 create policy "Authenticated users can create chats."
   on chats for insert
   with check ( auth.role() = 'authenticated' );
+
+create policy "Participants can update chats."
+  on chats for update
+  using ( exists (
+    select 1 from chat_participants
+    where chat_participants.chat_id = chats.id
+    and chat_participants.user_id = auth.uid()
+  ));
 
 create policy "Users can insert themselves as chat participants."
   on chat_participants for insert

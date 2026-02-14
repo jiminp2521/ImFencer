@@ -1,19 +1,17 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Loader2, Send } from 'lucide-react';
-import { createClient } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { notifyUsers } from '@/lib/notifications-client';
 
 type ChatComposerProps = {
   chatId: string;
-  senderId: string;
 };
 
-export function ChatComposer({ chatId, senderId }: ChatComposerProps) {
-  const supabase = createClient();
+export function ChatComposer({ chatId }: ChatComposerProps) {
+  const router = useRouter();
   const [content, setContent] = useState('');
   const [pending, setPending] = useState(false);
 
@@ -23,55 +21,33 @@ export function ChatComposer({ chatId, senderId }: ChatComposerProps) {
 
     setPending(true);
 
-    const { error } = await supabase.from('messages').insert({
-      chat_id: chatId,
-      sender_id: senderId,
-      content: message,
-    });
+    try {
+      const response = await fetch(`/api/chats/${chatId}/messages`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ content: message }),
+      });
 
-    if (error) {
-      console.error('Error sending message:', error);
-      alert('메시지 전송에 실패했습니다.');
-      setPending(false);
-      return;
-    }
-
-    await supabase
-      .from('chats')
-      .update({
-        last_message: message,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', chatId);
-
-    const participantsResult = await supabase
-      .from('chat_participants')
-      .select('user_id')
-      .eq('chat_id', chatId)
-      .neq('user_id', senderId);
-
-    if (participantsResult.error) {
-      console.error('Error fetching chat participants for notifications:', participantsResult.error);
-    } else {
-      try {
-        await notifyUsers(
-          supabase,
-          (participantsResult.data || []).map((participant: { user_id: string }) => ({
-            userId: participant.user_id,
-            actorId: senderId,
-            type: 'chat',
-            title: '새 메시지가 도착했습니다.',
-            body: message.length > 100 ? `${message.slice(0, 100)}...` : message,
-            link: `/chat?chat=${chatId}`,
-          }))
-        );
-      } catch (notificationError) {
-        console.error('Error creating chat message notifications:', notificationError);
+      if (response.status === 401) {
+        alert('로그인이 필요합니다.');
+        router.push(`/login?next=${encodeURIComponent(`/chat?chat=${chatId}`)}`);
+        return;
       }
-    }
 
-    setContent('');
-    setPending(false);
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        console.error('Send message failed:', body);
+        alert('메시지 전송에 실패했습니다.');
+        return;
+      }
+
+      setContent('');
+      router.refresh();
+    } finally {
+      setPending(false);
+    }
   };
 
   return (

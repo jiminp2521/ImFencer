@@ -257,7 +257,6 @@ export default async function FencingClassesPage({ searchParams }: ClassesPagePr
                   <ClassReservationButton
                     classId={classItem.id}
                     classTitle={classItem.title}
-                    notifyUserId={contactUserId}
                     initialReserved={myReservedClassIds.has(classItem.id)}
                     loginNext="/fencing/classes"
                     className="bg-blue-600 hover:bg-blue-700 text-white"

@@ -1,13 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ChevronLeft, Loader2, Star } from 'lucide-react';
-import { createClient } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { notifyUser } from '@/lib/notifications-client';
 
 type LessonInfo = {
   id: string;
@@ -18,14 +16,12 @@ type LessonInfo = {
 export default function LessonReviewWritePage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const supabase = useMemo(() => createClient(), []);
   const lessonId = params.id;
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lesson, setLesson] = useState<LessonInfo | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
   const [rating, setRating] = useState<number>(5);
   const [content, setContent] = useState('');
   const [canReview, setCanReview] = useState(false);
@@ -35,114 +31,89 @@ export default function LessonReviewWritePage() {
       setLoading(true);
       setError(null);
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const response = await fetch(`/api/fencing/lessons/${lessonId}/review`, { method: 'GET' });
 
-      if (!user) {
+      if (response.status === 401) {
         router.replace(`/login?next=${encodeURIComponent(`/fencing/lessons/${lessonId}/review`)}`);
         return;
       }
 
-      setUserId(user.id);
+      if (!response.ok) {
+        setError('레슨 정보를 불러올 수 없습니다.');
+        setLoading(false);
+        return;
+      }
 
-      const [lessonResult, orderResult, reviewResult] = await Promise.all([
-        supabase
-          .from('fencing_lesson_products')
-          .select('id, title, coach_id')
-          .eq('id', lessonId)
-          .maybeSingle(),
-        supabase
-          .from('fencing_lesson_orders')
-          .select('id')
-          .eq('lesson_id', lessonId)
-          .eq('buyer_id', user.id)
-          .maybeSingle(),
-        supabase
-          .from('fencing_lesson_reviews')
-          .select('rating, content')
-          .eq('lesson_id', lessonId)
-          .eq('reviewer_id', user.id)
-          .maybeSingle(),
-      ]);
+      const body = (await response.json()) as {
+        canReview: boolean;
+        reason?: string;
+        lesson?: { id: string; title: string; coachId?: string };
+        review?: { rating: number; content: string } | null;
+      };
 
-      if (lessonResult.error || !lessonResult.data) {
+      if (!body.lesson) {
         setError('레슨 정보를 찾을 수 없습니다.');
         setLoading(false);
         return;
       }
 
-      setLesson(lessonResult.data as LessonInfo);
+      setLesson({
+        id: body.lesson.id,
+        title: body.lesson.title,
+        coach_id: body.lesson.coachId || '',
+      });
 
-      if (lessonResult.data.coach_id === user.id) {
-        setError('본인 레슨에는 후기를 작성할 수 없습니다.');
-        setLoading(false);
-        return;
-      }
-
-      if (orderResult.error) {
-        setError('레슨 신청 내역 확인에 실패했습니다.');
-        setLoading(false);
-        return;
-      }
-
-      if (!orderResult.data) {
-        setError('신청한 레슨에만 후기를 작성할 수 있습니다.');
+      if (!body.canReview) {
+        if (body.reason === 'OWN_LESSON') {
+          setError('본인 레슨에는 후기를 작성할 수 없습니다.');
+        } else if (body.reason === 'NO_ORDER') {
+          setError('신청한 레슨에만 후기를 작성할 수 있습니다.');
+        } else {
+          setError('후기 작성이 불가능합니다.');
+        }
         setLoading(false);
         return;
       }
 
       setCanReview(true);
-
-      if (reviewResult.error && reviewResult.error.code !== 'PGRST116') {
-        console.error('Error loading existing review:', reviewResult.error);
-      } else if (reviewResult.data) {
-        setRating(reviewResult.data.rating || 5);
-        setContent(reviewResult.data.content || '');
+      if (body.review) {
+        setRating(body.review.rating || 5);
+        setContent(body.review.content || '');
       }
 
       setLoading(false);
     };
 
     load();
-  }, [lessonId, router, supabase]);
+  }, [lessonId, router]);
 
   const submitReview = async () => {
-    if (saving || !userId || !lesson || !canReview) return;
+    if (saving || !lesson || !canReview) return;
     setSaving(true);
 
     try {
       const trimmedContent = content.trim();
-      const { error: upsertError } = await supabase.from('fencing_lesson_reviews').upsert(
-        {
-          lesson_id: lesson.id,
-          reviewer_id: userId,
+      const response = await fetch(`/api/fencing/lessons/${lesson.id}/review`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
           rating,
           content: trimmedContent || null,
-          updated_at: new Date().toISOString(),
-        },
-        {
-          onConflict: 'lesson_id,reviewer_id',
-        }
-      );
+        }),
+      });
 
-      if (upsertError) {
-        console.error('Error submitting lesson review:', upsertError);
-        alert('후기 저장에 실패했습니다.');
+      if (response.status === 401) {
+        router.replace(`/login?next=${encodeURIComponent(`/fencing/lessons/${lesson.id}/review`)}`);
         return;
       }
 
-      try {
-        await notifyUser(supabase, {
-          userId: lesson.coach_id,
-          actorId: userId,
-          type: 'review',
-          title: '레슨 후기가 등록되었습니다.',
-          body: `${lesson.title} · ${rating}점`,
-          link: '/fencing/lessons',
-        });
-      } catch (notificationError) {
-        console.error('Error creating lesson review notification:', notificationError);
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        console.error('Error submitting lesson review:', body);
+        alert('후기 저장에 실패했습니다.');
+        return;
       }
 
       alert('후기가 저장되었습니다.');
