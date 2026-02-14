@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { createClient } from '@/lib/supabase-server';
+import { PostInteractions } from '@/components/community/PostInteractions';
 
 type PostPageProps = {
   params: Promise<{ id: string }>;
@@ -17,6 +18,10 @@ const categoryMap: Record<string, string> = {
 export default async function PostDetailPage({ params }: PostPageProps) {
   const { id } = await params;
   const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   const { data: post, error } = await supabase
     .from('posts')
@@ -36,6 +41,67 @@ export default async function PostDetailPage({ params }: PostPageProps) {
   if (error || !post) {
     notFound();
   }
+
+  const [likesResult, likedResult, bookmarkedResult, commentsResult] = await Promise.all([
+    supabase
+      .from('post_likes')
+      .select('*', { count: 'exact', head: true })
+      .eq('post_id', id),
+    user
+      ? supabase
+          .from('post_likes')
+          .select('post_id')
+          .eq('post_id', id)
+          .eq('user_id', user.id)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    user
+      ? supabase
+          .from('post_bookmarks')
+          .select('post_id')
+          .eq('post_id', id)
+          .eq('user_id', user.id)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    supabase
+      .from('comments')
+      .select(`
+        id,
+        content,
+        created_at,
+        profiles:author_id (username)
+      `)
+      .eq('post_id', id)
+      .is('parent_id', null)
+      .order('created_at', { ascending: true }),
+  ]);
+
+  if (likesResult.error) {
+    console.error('Error fetching likes count:', likesResult.error);
+  }
+
+  if (likedResult.error) {
+    console.error('Error fetching like status:', likedResult.error);
+  }
+
+  if (bookmarkedResult.error) {
+    console.error('Error fetching bookmark status:', bookmarkedResult.error);
+  }
+
+  if (commentsResult.error) {
+    console.error('Error fetching comments:', commentsResult.error);
+  }
+
+  const comments = (commentsResult.data || []).map((comment) => {
+    const commentProfile = Array.isArray(comment.profiles) ? comment.profiles[0] : comment.profiles;
+
+    return {
+      id: comment.id,
+      content: comment.content || '',
+      createdAt: comment.created_at,
+      author: commentProfile?.username || '알 수 없음',
+    };
+  });
 
   const profile = Array.isArray(post.profiles) ? post.profiles[0] : post.profiles;
   const createdAt = new Date(post.created_at).toLocaleString('ko-KR', {
@@ -84,6 +150,15 @@ export default async function PostDetailPage({ params }: PostPageProps) {
             ))}
           </div>
         )}
+
+        <PostInteractions
+          postId={post.id}
+          currentUserId={user?.id || null}
+          initialLiked={Boolean(likedResult.data)}
+          initialBookmarked={Boolean(bookmarkedResult.data)}
+          initialLikeCount={likesResult.count || 0}
+          initialComments={comments}
+        />
       </main>
     </div>
   );

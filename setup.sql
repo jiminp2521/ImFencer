@@ -75,6 +75,99 @@ create policy "Users can update own posts."
   on posts for update
   using ( auth.uid() = author_id );
 
+-- COMMENTS
+create table public.comments (
+  id uuid default uuid_generate_v4() primary key,
+  post_id uuid references public.posts(id) on delete cascade not null,
+  author_id uuid references public.profiles(id) on delete cascade not null,
+  parent_id uuid references public.comments(id) on delete cascade,
+  content text not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_at timestamp with time zone
+);
+
+alter table public.comments enable row level security;
+
+create policy "Comments are viewable by everyone."
+  on comments for select
+  using ( true );
+
+create policy "Users can insert their own comments."
+  on comments for insert
+  with check ( auth.uid() = author_id );
+
+create policy "Users can update own comments."
+  on comments for update
+  using ( auth.uid() = author_id );
+
+create policy "Users can delete own comments."
+  on comments for delete
+  using ( auth.uid() = author_id );
+
+-- POST LIKES
+create table public.post_likes (
+  post_id uuid references public.posts(id) on delete cascade not null,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  primary key (post_id, user_id)
+);
+
+alter table public.post_likes enable row level security;
+
+create policy "Post likes are viewable by everyone."
+  on post_likes for select
+  using ( true );
+
+create policy "Users can like posts as themselves."
+  on post_likes for insert
+  with check ( auth.uid() = user_id );
+
+create policy "Users can remove their own likes."
+  on post_likes for delete
+  using ( auth.uid() = user_id );
+
+-- POST BOOKMARKS
+create table public.post_bookmarks (
+  post_id uuid references public.posts(id) on delete cascade not null,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  primary key (post_id, user_id)
+);
+
+alter table public.post_bookmarks enable row level security;
+
+create policy "Post bookmarks are private to owner."
+  on post_bookmarks for select
+  using ( auth.uid() = user_id );
+
+create policy "Users can bookmark posts as themselves."
+  on post_bookmarks for insert
+  with check ( auth.uid() = user_id );
+
+create policy "Users can remove their own bookmarks."
+  on post_bookmarks for delete
+  using ( auth.uid() = user_id );
+
+-- REPORTS
+create table public.reports (
+  id uuid default uuid_generate_v4() primary key,
+  target_type text check (target_type in ('post', 'comment', 'user')) not null,
+  target_id uuid not null,
+  reporter_id uuid references public.profiles(id) on delete cascade not null,
+  reason text not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.reports enable row level security;
+
+create policy "Users can insert reports."
+  on reports for insert
+  with check ( auth.uid() = reporter_id );
+
+create policy "Users can view own reports."
+  on reports for select
+  using ( auth.uid() = reporter_id );
+
 -- MARKET ITEMS
 create table public.market_items (
   id uuid default uuid_generate_v4() primary key,
@@ -136,8 +229,18 @@ create table public.chat_participants (
   primary key (chat_id, user_id)
 );
 
+create table public.messages (
+  id uuid default uuid_generate_v4() primary key,
+  chat_id uuid references public.chats(id) on delete cascade not null,
+  sender_id uuid references public.profiles(id) on delete cascade not null,
+  content text not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  read_at timestamp with time zone
+);
+
 alter table public.chats enable row level security;
 alter table public.chat_participants enable row level security;
+alter table public.messages enable row level security;
 
 create policy "Users can view chats they are part of."
   on chats for select
@@ -154,6 +257,44 @@ create policy "Users can view chat participants for their chats."
     where cp.chat_id = chat_participants.chat_id
     and cp.user_id = auth.uid()
   ));
+
+create policy "Users can view messages for joined chats."
+  on messages for select
+  using ( exists (
+    select 1 from chat_participants cp
+    where cp.chat_id = messages.chat_id
+    and cp.user_id = auth.uid()
+  ));
+
+create policy "Users can insert messages for joined chats."
+  on messages for insert
+  with check (
+    auth.uid() = sender_id
+    and exists (
+      select 1 from chat_participants cp
+      where cp.chat_id = messages.chat_id
+      and cp.user_id = auth.uid()
+    )
+  );
+
+create policy "Users can update messages in joined chats."
+  on messages for update
+  using ( exists (
+    select 1 from chat_participants cp
+    where cp.chat_id = messages.chat_id
+    and cp.user_id = auth.uid()
+  ));
+
+create index idx_comments_post_created_at
+  on public.comments(post_id, created_at desc);
+create index idx_comments_parent_id
+  on public.comments(parent_id);
+create index idx_post_likes_user_id
+  on public.post_likes(user_id);
+create index idx_post_bookmarks_user_id
+  on public.post_bookmarks(user_id);
+create index idx_messages_chat_created_at
+  on public.messages(chat_id, created_at desc);
 
 -- STORAGE BUCKETS (Optional, for images)
 insert into storage.buckets (id, name)
