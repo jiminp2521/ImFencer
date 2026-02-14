@@ -5,10 +5,12 @@ import { useRouter } from 'next/navigation';
 import { CalendarCheck2, Loader2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
+import { notifyUser } from '@/lib/notifications-client';
 
 type ClassReservationButtonProps = {
   classId: string;
   classTitle: string;
+  notifyUserId?: string | null;
   initialReserved?: boolean;
   loginNext?: string;
   className?: string;
@@ -17,6 +19,7 @@ type ClassReservationButtonProps = {
 export function ClassReservationButton({
   classId,
   classTitle,
+  notifyUserId = null,
   initialReserved = false,
   loginNext = '/fencing/classes',
   className,
@@ -61,6 +64,22 @@ export function ClassReservationButton({
 
       setReserved(true);
       alert(`${classTitle} 예약 요청이 접수되었습니다.`);
+
+      if (notifyUserId) {
+        try {
+          await notifyUser(supabase, {
+            userId: notifyUserId,
+            actorId: user.id,
+            type: 'reservation',
+            title: '새 클래스 예약 요청이 도착했습니다.',
+            body: classTitle,
+            link: '/activity?view=manage',
+          });
+        } catch (notificationError) {
+          console.error('Error creating class reservation notification:', notificationError);
+        }
+      }
+
       router.refresh();
     } finally {
       setPending(false);

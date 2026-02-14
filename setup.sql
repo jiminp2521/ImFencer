@@ -589,3 +589,165 @@ create index idx_fencing_lesson_orders_buyer_id
   on public.fencing_lesson_orders(buyer_id);
 create index idx_profiles_club_id
   on public.profiles(club_id);
+
+create policy "Class owners/coaches can view managed class reservations."
+  on public.fencing_class_reservations for select
+  using (
+    exists (
+      select 1
+      from public.fencing_club_classes fcc
+      left join public.fencing_clubs fc on fc.id = fcc.club_id
+      where fcc.id = fencing_class_reservations.class_id
+      and (
+        fcc.coach_id = auth.uid()
+        or fc.owner_id = auth.uid()
+      )
+    )
+  );
+
+create policy "Class owners/coaches can update managed class reservations."
+  on public.fencing_class_reservations for update
+  using (
+    exists (
+      select 1
+      from public.fencing_club_classes fcc
+      left join public.fencing_clubs fc on fc.id = fcc.club_id
+      where fcc.id = fencing_class_reservations.class_id
+      and (
+        fcc.coach_id = auth.uid()
+        or fc.owner_id = auth.uid()
+      )
+    )
+  );
+
+create policy "Coaches can view incoming lesson orders."
+  on public.fencing_lesson_orders for select
+  using (
+    exists (
+      select 1 from public.fencing_lesson_products flp
+      where flp.id = fencing_lesson_orders.lesson_id
+      and flp.coach_id = auth.uid()
+    )
+  );
+
+create policy "Coaches can update incoming lesson orders."
+  on public.fencing_lesson_orders for update
+  using (
+    exists (
+      select 1 from public.fencing_lesson_products flp
+      where flp.id = fencing_lesson_orders.lesson_id
+      and flp.coach_id = auth.uid()
+    )
+  );
+
+-- NOTIFICATIONS
+create table public.notifications (
+  id uuid default uuid_generate_v4() primary key,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  actor_id uuid references public.profiles(id) on delete set null,
+  type text not null check (type in ('chat', 'comment', 'reservation', 'order', 'review', 'system')),
+  title text not null,
+  body text,
+  link text,
+  is_read boolean default false not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.notifications enable row level security;
+
+create policy "Users can view own notifications."
+  on public.notifications for select
+  using ( auth.uid() = user_id );
+
+create policy "Authenticated users can create notifications as actor."
+  on public.notifications for insert
+  with check (
+    auth.role() = 'authenticated'
+    and auth.uid() = actor_id
+  );
+
+create policy "Users can update own notifications."
+  on public.notifications for update
+  using ( auth.uid() = user_id );
+
+create policy "Users can delete own notifications."
+  on public.notifications for delete
+  using ( auth.uid() = user_id );
+
+create index idx_notifications_user_unread_created
+  on public.notifications(user_id, is_read, created_at desc);
+create index idx_notifications_created_at
+  on public.notifications(created_at desc);
+
+-- PUSH DEVICES (for future webview/app push integration)
+create table public.push_devices (
+  id uuid default uuid_generate_v4() primary key,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  provider text not null check (provider in ('fcm', 'apns', 'webpush')),
+  platform text not null check (platform in ('ios', 'android', 'web')),
+  device_token text not null unique,
+  is_active boolean default true not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_at timestamp with time zone
+);
+
+alter table public.push_devices enable row level security;
+
+create policy "Users can view own push devices."
+  on public.push_devices for select
+  using ( auth.uid() = user_id );
+
+create policy "Users can insert own push devices."
+  on public.push_devices for insert
+  with check ( auth.uid() = user_id );
+
+create policy "Users can update own push devices."
+  on public.push_devices for update
+  using ( auth.uid() = user_id );
+
+create index idx_push_devices_user_active
+  on public.push_devices(user_id, is_active);
+
+-- LESSON REVIEWS
+create table public.fencing_lesson_reviews (
+  id uuid default uuid_generate_v4() primary key,
+  lesson_id uuid references public.fencing_lesson_products(id) on delete cascade not null,
+  reviewer_id uuid references public.profiles(id) on delete cascade not null,
+  rating integer not null check (rating between 1 and 5),
+  content text,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_at timestamp with time zone
+);
+
+create unique index idx_fencing_lesson_reviews_unique
+  on public.fencing_lesson_reviews(lesson_id, reviewer_id);
+
+alter table public.fencing_lesson_reviews enable row level security;
+
+create policy "Lesson reviews are viewable by everyone."
+  on public.fencing_lesson_reviews for select
+  using ( true );
+
+create policy "Users can insert lesson reviews for ordered lessons."
+  on public.fencing_lesson_reviews for insert
+  with check (
+    auth.uid() = reviewer_id
+    and exists (
+      select 1 from public.fencing_lesson_orders flo
+      where flo.lesson_id = fencing_lesson_reviews.lesson_id
+      and flo.buyer_id = auth.uid()
+    )
+  );
+
+create policy "Users can update own lesson reviews."
+  on public.fencing_lesson_reviews for update
+  using ( auth.uid() = reviewer_id );
+
+create policy "Users can delete own lesson reviews."
+  on public.fencing_lesson_reviews for delete
+  using ( auth.uid() = reviewer_id );
+
+create index idx_fencing_lesson_reviews_lesson_id
+  on public.fencing_lesson_reviews(lesson_id);
+create index idx_fencing_lesson_reviews_reviewer_id
+  on public.fencing_lesson_reviews(reviewer_id);

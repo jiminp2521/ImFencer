@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { StartChatButton } from '@/components/chat/StartChatButton';
+import { notifyUser } from '@/lib/notifications-client';
 
 type PostComment = {
   id: string;
@@ -155,6 +156,21 @@ export function PostInteractions({
         },
       ]);
       setCommentInput('');
+
+      if (currentUserId !== postAuthorId) {
+        try {
+          await notifyUser(supabase, {
+            userId: postAuthorId,
+            actorId: currentUserId,
+            type: 'comment',
+            title: '게시글에 새 댓글이 달렸습니다.',
+            body: content.length > 80 ? `${content.slice(0, 80)}...` : content,
+            link: `/posts/${postId}`,
+          });
+        } catch (notificationError) {
+          console.error('Error creating comment notification:', notificationError);
+        }
+      }
     } catch (error) {
       console.error('Comment submit failed:', error);
       alert('댓글 등록에 실패했습니다.');

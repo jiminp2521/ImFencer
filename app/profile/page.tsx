@@ -201,6 +201,23 @@ export default async function ProfilePage() {
           </Card>
         </div>
 
+        <section className="grid grid-cols-2 gap-3">
+          <Link
+            href="/activity"
+            className="rounded-lg border border-white/10 bg-gray-950 px-3 py-3 hover:bg-gray-900/70 transition-colors"
+          >
+            <p className="text-sm font-semibold text-white">신청/예약 관리</p>
+            <p className="mt-1 text-xs text-gray-500">클래스/레슨 요청 내역 확인</p>
+          </Link>
+          <Link
+            href="/notifications"
+            className="rounded-lg border border-white/10 bg-gray-950 px-3 py-3 hover:bg-gray-900/70 transition-colors"
+          >
+            <p className="text-sm font-semibold text-white">알림함</p>
+            <p className="mt-1 text-xs text-gray-500">채팅/댓글/신청 알림 확인</p>
+          </Link>
+        </section>
+
         <section className="space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold text-white">최근 작성한 글</h3>

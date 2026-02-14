@@ -28,6 +28,11 @@ type LessonOrderRow = {
   lesson_id: string;
 };
 
+type LessonReviewRow = {
+  lesson_id: string;
+  rating: number;
+};
+
 const weaponLabelMap: Record<string, string> = {
   Epee: '에페',
   Sabre: '사브르',
@@ -94,6 +99,41 @@ export default async function FencingLessonsPage() {
     ((myLessonOrdersResult.data || []) as LessonOrderRow[]).map((row) => row.lesson_id)
   );
 
+  const [lessonReviewsResult, myLessonReviewsResult] = await Promise.all([
+    lessonIds.length > 0
+      ? supabase
+          .from('fencing_lesson_reviews')
+          .select('lesson_id, rating')
+          .in('lesson_id', lessonIds)
+      : Promise.resolve({ data: [], error: null }),
+    user && lessonIds.length > 0
+      ? supabase
+          .from('fencing_lesson_reviews')
+          .select('lesson_id')
+          .eq('reviewer_id', user.id)
+          .in('lesson_id', lessonIds)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+
+  if (lessonReviewsResult.error && lessonReviewsResult.error.code !== '42P01') {
+    console.error('Error fetching lesson reviews:', lessonReviewsResult.error);
+  }
+  if (myLessonReviewsResult.error && myLessonReviewsResult.error.code !== '42P01') {
+    console.error('Error fetching my lesson reviews:', myLessonReviewsResult.error);
+  }
+
+  const ratingMap = new Map<string, { count: number; sum: number }>();
+  for (const review of (lessonReviewsResult.data || []) as LessonReviewRow[]) {
+    const current = ratingMap.get(review.lesson_id) || { count: 0, sum: 0 };
+    current.count += 1;
+    current.sum += review.rating;
+    ratingMap.set(review.lesson_id, current);
+  }
+
+  const myReviewedLessonIds = new Set(
+    ((myLessonReviewsResult.data || []) as { lesson_id: string }[]).map((row) => row.lesson_id)
+  );
+
   const schemaMissing = lessonsResult.error?.code === '42P01';
 
   return (
@@ -133,6 +173,13 @@ export default async function FencingLessonsPage() {
                   <div>
                     <p className="text-sm font-semibold text-white">{lesson.title}</p>
                     <p className="text-xs text-gray-400">코치: {coach?.username || '알 수 없음'}</p>
+                    <p className="text-[11px] text-amber-300">
+                      {ratingMap.has(lesson.id)
+                        ? `평점 ${(
+                            ratingMap.get(lesson.id)!.sum / ratingMap.get(lesson.id)!.count
+                          ).toFixed(1)} / 5 · 후기 ${ratingMap.get(lesson.id)!.count}개`
+                        : '아직 후기가 없습니다.'}
+                    </p>
                   </div>
                   <Badge className="border-white/10 bg-gray-900 text-gray-300">
                     {lessonModeMap[lesson.lesson_mode] || lesson.lesson_mode}
@@ -174,6 +221,18 @@ export default async function FencingLessonsPage() {
                     loginNext="/fencing/lessons"
                     className="bg-emerald-600 hover:bg-emerald-700 text-white"
                   />
+                  {user && user.id !== lesson.coach_id && myLessonOrderIds.has(lesson.id) ? (
+                    <Button
+                      asChild
+                      variant="outline"
+                      size="default"
+                      className="border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20"
+                    >
+                      <Link href={`/fencing/lessons/${lesson.id}/review`}>
+                        {myReviewedLessonIds.has(lesson.id) ? '후기 수정' : '후기 작성'}
+                      </Link>
+                    </Button>
+                  ) : null}
                 </div>
               </article>
             );

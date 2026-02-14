@@ -5,6 +5,7 @@ import { Loader2, Send } from 'lucide-react';
 import { createClient } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { notifyUsers } from '@/lib/notifications-client';
 
 type ChatComposerProps = {
   chatId: string;
@@ -42,6 +43,32 @@ export function ChatComposer({ chatId, senderId }: ChatComposerProps) {
         updated_at: new Date().toISOString(),
       })
       .eq('id', chatId);
+
+    const participantsResult = await supabase
+      .from('chat_participants')
+      .select('user_id')
+      .eq('chat_id', chatId)
+      .neq('user_id', senderId);
+
+    if (participantsResult.error) {
+      console.error('Error fetching chat participants for notifications:', participantsResult.error);
+    } else {
+      try {
+        await notifyUsers(
+          supabase,
+          (participantsResult.data || []).map((participant: { user_id: string }) => ({
+            userId: participant.user_id,
+            actorId: senderId,
+            type: 'chat',
+            title: '새 메시지가 도착했습니다.',
+            body: message.length > 100 ? `${message.slice(0, 100)}...` : message,
+            link: `/chat?chat=${chatId}`,
+          }))
+        );
+      } catch (notificationError) {
+        console.error('Error creating chat message notifications:', notificationError);
+      }
+    }
 
     setContent('');
     setPending(false);

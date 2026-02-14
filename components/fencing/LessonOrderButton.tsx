@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Loader2, ShoppingCart } from 'lucide-react';
 import { createClient } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
+import { notifyUser } from '@/lib/notifications-client';
 
 type LessonOrderButtonProps = {
   lessonId: string;
@@ -72,6 +73,20 @@ export function LessonOrderButton({
 
       setOrdered(true);
       alert(`${lessonTitle} 레슨 신청이 접수되었습니다.`);
+
+      try {
+        await notifyUser(supabase, {
+          userId: coachId,
+          actorId: user.id,
+          type: 'order',
+          title: '새 레슨 신청이 도착했습니다.',
+          body: lessonTitle,
+          link: '/activity?view=manage',
+        });
+      } catch (notificationError) {
+        console.error('Error creating lesson order notification:', notificationError);
+      }
+
       router.refresh();
     } finally {
       setPending(false);

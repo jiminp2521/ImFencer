@@ -6,6 +6,7 @@ import { Loader2, MessageCircle } from 'lucide-react';
 import type { VariantProps } from 'class-variance-authority';
 import { createClient } from '@/lib/supabase';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { notifyUser } from '@/lib/notifications-client';
 
 type ButtonVariantProps = VariantProps<typeof buttonVariants>;
 
@@ -131,6 +132,19 @@ export function StartChatButton({
             .from('chats')
             .update({ last_message: firstMessage, updated_at: new Date().toISOString() })
             .eq('id', targetChatId);
+
+          try {
+            await notifyUser(supabase, {
+              userId: targetUserId,
+              actorId: user.id,
+              type: 'chat',
+              title: '새 채팅이 시작되었습니다.',
+              body: firstMessage,
+              link: `/chat?chat=${targetChatId}`,
+            });
+          } catch (notificationError) {
+            console.error('Error creating chat notification:', notificationError);
+          }
         } else {
           console.error('Error creating first message:', firstMessageError);
         }

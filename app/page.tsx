@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Bell } from 'lucide-react';
 import { FeedItem } from '@/components/community/FeedItem';
 import { FloatingActionButton } from '@/components/ui/floating-action-button';
 import { createPublicClient } from '@/lib/supabase-public';
@@ -133,13 +134,24 @@ export default async function Home({ searchParams }: HomePageProps) {
   const myProfileResult = user
     ? await serverSupabase.from('profiles').select('club_id').eq('id', user.id).maybeSingle()
     : { data: null, error: null };
+  const unreadNotificationsResult = user
+    ? await serverSupabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('is_read', false)
+    : { count: 0, error: null };
 
   if (myProfileResult.error) {
     console.error('Error fetching my profile club:', myProfileResult.error);
   }
+  if (unreadNotificationsResult.error && unreadNotificationsResult.error.code !== '42P01') {
+    console.error('Error fetching unread notifications count:', unreadNotificationsResult.error);
+  }
 
   const myClubId = myProfileResult.data?.club_id || null;
   const canUseClubFeed = Boolean(user && myClubId);
+  const unreadNotificationsCount = unreadNotificationsResult.count || 0;
 
   let totalCount = 0;
   let totalCountError: { message?: string } | null = null;
@@ -305,7 +317,19 @@ export default async function Home({ searchParams }: HomePageProps) {
         <div className="relative w-32 h-8">
           <img src="/app-logo.png" alt="ImFencer" className="object-contain w-full h-full object-left" />
         </div>
-        <div className="flex gap-2" />
+        <div className="flex gap-2">
+          <Link
+            href={user ? '/notifications' : '/login?next=%2Fnotifications'}
+            className="relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-gray-900 text-gray-300 hover:text-white hover:bg-gray-800 transition-colors"
+          >
+            <Bell className="h-4 w-4" />
+            {unreadNotificationsCount > 0 ? (
+              <span className="absolute -top-1 -right-1 inline-flex min-w-5 h-5 px-1.5 items-center justify-center rounded-full bg-red-500 text-[10px] font-semibold text-white">
+                {unreadNotificationsCount > 99 ? '99+' : unreadNotificationsCount}
+              </span>
+            ) : null}
+          </Link>
+        </div>
       </header>
 
       <div className="flex gap-2 px-4 py-3 overflow-x-auto no-scrollbar border-b border-white/5">
