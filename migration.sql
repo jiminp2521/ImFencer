@@ -106,6 +106,11 @@ create policy "Users can view own reports."
   on public.reports for select
   using ( auth.uid() = reporter_id );
 
+drop policy if exists "Users can delete own market items." on public.market_items;
+create policy "Users can delete own market items."
+  on public.market_items for delete
+  using ( auth.uid() = seller_id );
+
 -- MESSAGES
 create table if not exists public.messages (
   id uuid default uuid_generate_v4() primary key,

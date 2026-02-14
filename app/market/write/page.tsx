@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronLeft, ImagePlus, Loader2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase';
@@ -12,7 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 export default function MarketWritePage() {
   const router = useRouter();
-  const supabase = createClient();
+  const searchParams = useSearchParams();
+  const supabase = useMemo(() => createClient(), []);
+  const editId = searchParams.get('edit');
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -23,6 +25,8 @@ export default function MarketWritePage() {
   const [imageUrlInput, setImageUrlInput] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [loadingEditData, setLoadingEditData] = useState(Boolean(editId));
+  const [loadedEditId, setLoadedEditId] = useState<string | null>(null);
 
   const imagePreviewUrl = useMemo(() => {
     if (!imageFile) return null;
@@ -36,6 +40,58 @@ export default function MarketWritePage() {
       }
     };
   }, [imagePreviewUrl]);
+
+  useEffect(() => {
+    const loadEditData = async () => {
+      if (!editId) {
+        setLoadingEditData(false);
+        return;
+      }
+
+      if (loadedEditId === editId) {
+        setLoadingEditData(false);
+        return;
+      }
+
+      setLoadingEditData(true);
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        alert('로그인이 필요합니다.');
+        router.push(`/login?next=/market/write?edit=${editId}`);
+        return;
+      }
+
+      const { data: item, error } = await supabase
+        .from('market_items')
+        .select('id, seller_id, title, description, price, weapon_type, brand, condition, image_url')
+        .eq('id', editId)
+        .eq('seller_id', user.id)
+        .single();
+
+      if (error || !item) {
+        console.error('Error loading market item to edit:', error);
+        alert('수정할 판매글을 찾을 수 없습니다.');
+        router.push('/market');
+        return;
+      }
+
+      setTitle(item.title || '');
+      setDescription(item.description || '');
+      setPrice(String(item.price || ''));
+      setWeaponType(item.weapon_type || 'Epee');
+      setBrand(item.brand || '');
+      setCondition(item.condition || '중고');
+      setImageUrlInput(item.image_url || '');
+      setLoadedEditId(editId);
+      setLoadingEditData(false);
+    };
+
+    loadEditData();
+  }, [editId, loadedEditId, router, supabase]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -85,25 +141,37 @@ export default function MarketWritePage() {
       finalImageUrl = publicData.publicUrl;
     }
 
-    const { data, error } = await supabase
-      .from('market_items')
-      .insert({
-        seller_id: user.id,
-        title: title.trim(),
-        description: description.trim(),
-        price: Math.round(numericPrice),
-        status: 'selling',
-        weapon_type: weaponType,
-        brand: brand.trim() || null,
-        condition,
-        image_url: finalImageUrl,
-      })
-      .select('id')
-      .single();
+    const payload = {
+      title: title.trim(),
+      description: description.trim(),
+      price: Math.round(numericPrice),
+      weapon_type: weaponType,
+      brand: brand.trim() || null,
+      condition,
+      image_url: finalImageUrl,
+    };
+
+    const { data, error } = editId
+      ? await supabase
+          .from('market_items')
+          .update(payload)
+          .eq('id', editId)
+          .eq('seller_id', user.id)
+          .select('id')
+          .single()
+      : await supabase
+          .from('market_items')
+          .insert({
+            seller_id: user.id,
+            ...payload,
+            status: 'selling',
+          })
+          .select('id')
+          .single();
 
     if (error || !data) {
-      console.error('Error creating market item:', error);
-      alert('판매글 등록에 실패했습니다.');
+      console.error('Error saving market item:', error);
+      alert(editId ? '판매글 수정에 실패했습니다.' : '판매글 등록에 실패했습니다.');
       setSubmitting(false);
       return;
     }
@@ -115,14 +183,20 @@ export default function MarketWritePage() {
   return (
     <div className="min-h-screen pb-20 bg-black">
       <header className="sticky top-0 z-40 bg-black/90 backdrop-blur border-b border-white/10 h-14 px-4 flex items-center justify-between">
-        <Link href="/market" className="text-gray-400 hover:text-white transition-colors">
+        <Link href={editId ? `/market/${editId}` : '/market'} className="text-gray-400 hover:text-white transition-colors">
           <ChevronLeft className="w-6 h-6" />
         </Link>
-        <h1 className="text-base font-semibold text-white">판매글 등록</h1>
+        <h1 className="text-base font-semibold text-white">{editId ? '판매글 수정' : '판매글 등록'}</h1>
         <div className="w-6" />
       </header>
 
       <main className="p-4">
+        {loadingEditData ? (
+          <div className="py-16 flex flex-col items-center gap-3 text-gray-400">
+            <Loader2 className="w-5 h-5 animate-spin" />
+            <p className="text-sm">판매글 정보를 불러오는 중입니다.</p>
+          </div>
+        ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
             value={title}
@@ -222,9 +296,10 @@ export default function MarketWritePage() {
             className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white"
             disabled={submitting || !title.trim() || !description.trim() || !price}
           >
-            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : '등록하기'}
+            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : editId ? '수정하기' : '등록하기'}
           </Button>
         </form>
+        )}
       </main>
     </div>
   );

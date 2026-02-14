@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { createClient } from '@/lib/supabase-server';
 import { MarketStatusActions } from '@/components/market/MarketStatusActions';
 import { ContactSellerButton } from '@/components/market/ContactSellerButton';
+import { MarketOwnerActions } from '@/components/market/MarketOwnerActions';
 
 type MarketDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -128,9 +129,10 @@ export default async function MarketDetailPage({ params }: MarketDetailPageProps
 
         <section className="pt-2">
           {isSeller ? (
-            <div className="space-y-2">
+            <div className="space-y-3">
               <p className="text-sm font-medium text-gray-200">판매 상태 변경</p>
               <MarketStatusActions marketItemId={item.id} initialStatus={item.status} />
+              <MarketOwnerActions marketItemId={item.id} />
             </div>
           ) : (
             <ContactSellerButton sellerId={item.seller_id} marketTitle={item.title} />

@@ -198,6 +198,10 @@ create policy "Users can update own market items."
   on market_items for update
   using ( auth.uid() = seller_id );
 
+create policy "Users can delete own market items."
+  on market_items for delete
+  using ( auth.uid() = seller_id );
+
 -- COMPETITIONS
 create table public.competitions (
   id uuid default uuid_generate_v4() primary key,

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase-server';
 import { ChatComposer } from '@/components/chat/ChatComposer';
+import { ChatRealtimeSync } from '@/components/chat/ChatRealtimeSync';
 
 type ChatPageProps = {
   searchParams: Promise<{
@@ -148,6 +149,7 @@ export default async function ChatPage({ searchParams }: ChatPageProps) {
 
   return (
     <div className="min-h-screen pb-20">
+      {chatIds.length > 0 && <ChatRealtimeSync chatIds={chatIds} />}
       <header className="sticky top-0 z-40 bg-black/80 backdrop-blur-md border-b border-white/10 px-4 h-14 flex items-center">
         <h1 className="text-lg font-bold text-white">채팅</h1>
       </header>
