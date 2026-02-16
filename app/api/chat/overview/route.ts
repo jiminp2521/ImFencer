@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase-server';
+import { createAdminClient, hasServiceRole } from '@/lib/supabase-admin';
 import { withApiTiming } from '@/lib/api-timing';
 
 export const dynamic = 'force-dynamic';
@@ -27,6 +28,15 @@ export async function GET(request: NextRequest) {
     const isPrefetch = request.headers.get('x-imfencer-prefetch') === '1';
 
     const supabase = await createClient();
+    const adminClient = (() => {
+      if (!hasServiceRole) return null;
+      try {
+        return createAdminClient();
+      } catch (error) {
+        console.error('Failed to init admin client in chat overview:', error);
+        return null;
+      }
+    })();
 
     const {
       data: { user },
@@ -41,11 +51,25 @@ export async function GET(request: NextRequest) {
       .select('chat_id')
       .eq('user_id', user.id);
 
+    let participantRows = participantResult.data || [];
     if (participantResult.error) {
       console.error('Error fetching chat participants:', participantResult.error);
+
+      if (adminClient) {
+        const adminParticipantResult = await adminClient
+          .from('chat_participants')
+          .select('chat_id')
+          .eq('user_id', user.id);
+
+        if (!adminParticipantResult.error) {
+          participantRows = adminParticipantResult.data || [];
+        } else {
+          console.error('Admin fallback failed for chat participants:', adminParticipantResult.error);
+        }
+      }
     }
 
-    const chatIds = Array.from(new Set((participantResult.data || []).map((row) => row.chat_id)));
+    const chatIds = Array.from(new Set(participantRows.map((row) => row.chat_id)));
 
     const selectedChatId = preferredChatId && chatIds.includes(preferredChatId)
       ? preferredChatId
@@ -60,7 +84,7 @@ export async function GET(request: NextRequest) {
           .is('read_at', null)
       : Promise.resolve({ error: null });
 
-    const [chatsResult, partnerResult, messagesResult, markReadResult] = await Promise.all([
+    const [chatsResult, partnerResultRaw, messagesResult, markReadResult] = await Promise.all([
       chatIds.length > 0
         ? supabase
             .from('chats')
@@ -104,7 +128,26 @@ export async function GET(request: NextRequest) {
     if (chatsResult.error) {
       console.error('Error fetching chats:', chatsResult.error);
     }
-    if (partnerResult.error) {
+    let partnerResult = partnerResultRaw;
+    if (partnerResult.error && adminClient) {
+      console.error('Error fetching chat partners:', partnerResult.error);
+
+      const adminPartnerResult = await adminClient
+        .from('chat_participants')
+        .select(`
+          chat_id,
+          user_id,
+          profiles:user_id (username)
+        `)
+        .in('chat_id', chatIds)
+        .neq('user_id', user.id);
+
+      if (!adminPartnerResult.error) {
+        partnerResult = adminPartnerResult;
+      } else {
+        console.error('Admin fallback failed for chat partners:', adminPartnerResult.error);
+      }
+    } else if (partnerResult.error) {
       console.error('Error fetching chat partners:', partnerResult.error);
     }
     if (messagesResult.error) {

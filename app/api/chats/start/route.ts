@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
+import type { PostgrestError, SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase-server';
+import { createAdminClient, hasServiceRole } from '@/lib/supabase-admin';
 import { ensureProfileRow } from '@/lib/ensure-profile';
+import { createNotificationAndPush } from '@/lib/notifications';
 
 type StartChatBody = {
   targetUserId?: string;
@@ -13,8 +16,196 @@ type ChatParticipantRow = {
   user_id: string;
 };
 
+type ChatInsertRow = {
+  id: string;
+};
+
+const CHAT_RLS_FIX_HINT = 'Supabase SQL Editor에서 migrations/20260217_chat_rls_fix.sql 을 실행해주세요.';
+
+const toErrorMessage = (error: PostgrestError | Error | null | undefined) => {
+  if (!error) return 'Unknown error';
+  return error.message || 'Unknown error';
+};
+
+const isPolicyRelatedError = (message: string) =>
+  /(row-level security|infinite recursion|permission denied|policy)/i.test(message);
+
+const isLegacyKeyError = (message: string) => /legacy api keys are disabled/i.test(message);
+
+const getAdminClientSafe = () => {
+  if (!hasServiceRole) return null;
+
+  try {
+    return createAdminClient();
+  } catch (error) {
+    console.error('Failed to init admin client for chats/start:', error);
+    return null;
+  }
+};
+
+const findExistingDirectChat = (
+  participantRows: ChatParticipantRow[],
+  currentUserId: string,
+  targetUserId: string
+) => {
+  const byChat = new Map<string, Set<string>>();
+
+  for (const row of participantRows) {
+    if (!byChat.has(row.chat_id)) {
+      byChat.set(row.chat_id, new Set());
+    }
+
+    byChat.get(row.chat_id)!.add(row.user_id);
+  }
+
+  for (const [chatId, members] of byChat.entries()) {
+    if (members.has(currentUserId) && members.has(targetUserId)) {
+      return chatId;
+    }
+  }
+
+  return null;
+};
+
+async function createChatRecord({
+  userClient,
+  adminClient,
+  lastMessage,
+}: {
+  userClient: SupabaseClient;
+  adminClient: SupabaseClient | null;
+  lastMessage: string;
+}) {
+  const payload = {
+    last_message: lastMessage,
+    updated_at: new Date().toISOString(),
+  };
+
+  const userInsertResult = await userClient
+    .from('chats')
+    .insert(payload)
+    .select('id')
+    .single();
+
+  if (!userInsertResult.error && userInsertResult.data) {
+    return {
+      ok: true as const,
+      chatId: (userInsertResult.data as ChatInsertRow).id,
+      usedAdmin: false,
+    };
+  }
+
+  const userErrorMessage = toErrorMessage(userInsertResult.error);
+  console.error('Error creating chat with user session:', userInsertResult.error);
+
+  if (!adminClient) {
+    return {
+      ok: false as const,
+      detail: userErrorMessage,
+      hint: isPolicyRelatedError(userErrorMessage) ? CHAT_RLS_FIX_HINT : null,
+    };
+  }
+
+  const adminInsertResult = await adminClient
+    .from('chats')
+    .insert(payload)
+    .select('id')
+    .single();
+
+  if (!adminInsertResult.error && adminInsertResult.data) {
+    return {
+      ok: true as const,
+      chatId: (adminInsertResult.data as ChatInsertRow).id,
+      usedAdmin: true,
+    };
+  }
+
+  const adminErrorMessage = toErrorMessage(adminInsertResult.error);
+  console.error('Error creating chat with admin client:', adminInsertResult.error);
+
+  return {
+    ok: false as const,
+    detail: adminErrorMessage,
+    hint:
+      isLegacyKeyError(adminErrorMessage) || isPolicyRelatedError(userErrorMessage)
+        ? CHAT_RLS_FIX_HINT
+        : null,
+  };
+}
+
+async function upsertParticipant({
+  userClient,
+  adminClient,
+  chatId,
+  userId,
+}: {
+  userClient: SupabaseClient;
+  adminClient: SupabaseClient | null;
+  chatId: string;
+  userId: string;
+}) {
+  const payload = {
+    chat_id: chatId,
+    user_id: userId,
+  };
+
+  const userUpsertResult = await userClient.from('chat_participants').upsert(payload, {
+    onConflict: 'chat_id,user_id',
+    ignoreDuplicates: true,
+  });
+
+  if (!userUpsertResult.error) {
+    return {
+      ok: true as const,
+      usedAdmin: false,
+      detail: null,
+      hint: null,
+    };
+  }
+
+  const userErrorMessage = toErrorMessage(userUpsertResult.error);
+  console.error(`Error upserting chat participant via user client (${userId}):`, userUpsertResult.error);
+
+  if (!adminClient) {
+    return {
+      ok: false as const,
+      usedAdmin: false,
+      detail: userErrorMessage,
+      hint: isPolicyRelatedError(userErrorMessage) ? CHAT_RLS_FIX_HINT : null,
+    };
+  }
+
+  const adminUpsertResult = await adminClient.from('chat_participants').upsert(payload, {
+    onConflict: 'chat_id,user_id',
+    ignoreDuplicates: true,
+  });
+
+  if (!adminUpsertResult.error) {
+    return {
+      ok: true as const,
+      usedAdmin: true,
+      detail: null,
+      hint: null,
+    };
+  }
+
+  const adminErrorMessage = toErrorMessage(adminUpsertResult.error);
+  console.error(`Error upserting chat participant via admin client (${userId}):`, adminUpsertResult.error);
+
+  return {
+    ok: false as const,
+    usedAdmin: true,
+    detail: adminErrorMessage,
+    hint:
+      isLegacyKeyError(adminErrorMessage) || isPolicyRelatedError(userErrorMessage)
+        ? CHAT_RLS_FIX_HINT
+        : null,
+  };
+}
+
 export async function POST(request: Request) {
   const supabase = await createClient();
+  const adminClient = getAdminClientSafe();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -31,6 +222,7 @@ export async function POST(request: Request) {
   if (!targetUserId) {
     return NextResponse.json({ error: 'targetUserId is required' }, { status: 400 });
   }
+
   if (targetUserId === user.id) {
     return NextResponse.json({ error: 'Cannot chat with yourself' }, { status: 400 });
   }
@@ -38,110 +230,167 @@ export async function POST(request: Request) {
   try {
     await ensureProfileRow(supabase, user.id);
 
-    const { data: participantRows, error: participantsError } = await supabase
+    const participantRowsResult = await supabase
       .from('chat_participants')
       .select('chat_id, user_id')
       .in('user_id', [user.id, targetUserId]);
 
-    if (participantsError) {
-      console.error('Error loading existing chat participants:', participantsError);
-      return NextResponse.json({ error: 'Failed to load existing chats' }, { status: 500 });
-    }
+    let participantRows = (participantRowsResult.data || []) as ChatParticipantRow[];
+    let participantLookupWarning: string | null = null;
 
-    const byChat = new Map<string, Set<string>>();
-    for (const row of (participantRows || []) as ChatParticipantRow[]) {
-      if (!byChat.has(row.chat_id)) byChat.set(row.chat_id, new Set());
-      byChat.get(row.chat_id)!.add(row.user_id);
-    }
+    if (participantRowsResult.error) {
+      const lookupErrorMessage = toErrorMessage(participantRowsResult.error);
+      participantLookupWarning = lookupErrorMessage;
+      console.error('Error loading existing chat participants via user client:', participantRowsResult.error);
 
-    let chatId: string | null = null;
-    for (const [candidateChatId, userIds] of byChat.entries()) {
-      if (userIds.has(user.id) && userIds.has(targetUserId)) {
-        chatId = candidateChatId;
-        break;
+      if (adminClient) {
+        const adminLookupResult = await adminClient
+          .from('chat_participants')
+          .select('chat_id, user_id')
+          .in('user_id', [user.id, targetUserId]);
+
+        if (!adminLookupResult.error) {
+          participantRows = (adminLookupResult.data || []) as ChatParticipantRow[];
+          participantLookupWarning = null;
+        } else {
+          console.error('Error loading existing chat participants via admin client:', adminLookupResult.error);
+        }
       }
     }
+
+    let chatId = findExistingDirectChat(participantRows, user.id, targetUserId);
+    let createdNewChat = false;
 
     if (!chatId) {
       const chatStartText = `${contextTitle || '새로운 문의'} 대화가 시작되었습니다.`;
+      const chatCreateResult = await createChatRecord({
+        userClient: supabase,
+        adminClient,
+        lastMessage: chatStartText,
+      });
 
-      const { data: chat, error: chatError } = await supabase
-        .from('chats')
-        .insert({
-          last_message: chatStartText,
-          updated_at: new Date().toISOString(),
-        })
-        .select('id')
-        .single();
-
-      if (chatError || !chat) {
-        console.error('Error creating chat:', chatError);
-        return NextResponse.json({ error: 'Failed to create chat' }, { status: 500 });
+      if (!chatCreateResult.ok) {
+        return NextResponse.json(
+          {
+            error: 'Failed to create chat',
+            code: 'CHAT_CREATE_FAILED',
+            detail: chatCreateResult.detail,
+            hint: chatCreateResult.hint,
+          },
+          { status: 500 }
+        );
       }
 
-      chatId = chat.id;
+      chatId = chatCreateResult.chatId;
+      createdNewChat = true;
 
-      const { error: myParticipantError } = await supabase
-        .from('chat_participants')
-        .insert({ chat_id: chatId, user_id: user.id });
+      const myParticipantResult = await upsertParticipant({
+        userClient: supabase,
+        adminClient,
+        chatId,
+        userId: user.id,
+      });
 
-      if (myParticipantError) {
-        console.error('Error creating chat participant for me:', myParticipantError);
-        return NextResponse.json({ error: 'Failed to create chat participants' }, { status: 500 });
+      if (!myParticipantResult.ok) {
+        return NextResponse.json(
+          {
+            error: 'Failed to create chat participants',
+            code: 'CHAT_PARTICIPANT_ME_FAILED',
+            detail: myParticipantResult.detail,
+            hint: myParticipantResult.hint,
+          },
+          { status: 500 }
+        );
       }
 
-      const { error: targetParticipantError } = await supabase
-        .from('chat_participants')
-        .insert({ chat_id: chatId, user_id: targetUserId });
+      const targetParticipantResult = await upsertParticipant({
+        userClient: supabase,
+        adminClient,
+        chatId,
+        userId: targetUserId,
+      });
 
-      if (targetParticipantError) {
-        console.error('Error creating chat participant for target:', targetParticipantError);
-        return NextResponse.json({ error: 'Failed to create chat participants' }, { status: 500 });
+      if (!targetParticipantResult.ok) {
+        return NextResponse.json(
+          {
+            error: 'Failed to create chat participants',
+            code: 'CHAT_PARTICIPANT_TARGET_FAILED',
+            detail: targetParticipantResult.detail,
+            hint: targetParticipantResult.hint,
+          },
+          { status: 500 }
+        );
       }
 
       const firstMessage =
         openingMessage ||
         (contextTitle ? `${contextTitle} 문의드립니다.` : '안녕하세요. 문의드립니다.');
 
-      const { error: firstMessageError } = await supabase.from('messages').insert({
+      const firstMessageResult = await supabase.from('messages').insert({
         chat_id: chatId,
         sender_id: user.id,
         content: firstMessage,
       });
 
-      if (firstMessageError) {
-        // Chat was created; message insert failed. Keep chatId and let UI proceed.
-        console.error('Error creating first message:', firstMessageError);
+      if (firstMessageResult.error && adminClient) {
+        const adminMessageResult = await adminClient.from('messages').insert({
+          chat_id: chatId,
+          sender_id: user.id,
+          content: firstMessage,
+        });
+
+        if (adminMessageResult.error) {
+          console.error('Error creating first message via admin client:', adminMessageResult.error);
+        }
+      } else if (firstMessageResult.error) {
+        console.error('Error creating first message:', firstMessageResult.error);
       } else {
-        // Best-effort chat preview update (requires chat update policy in DB).
-        const { error: chatUpdateError } = await supabase
+        const chatUpdateResult = await supabase
           .from('chats')
           .update({ last_message: firstMessage, updated_at: new Date().toISOString() })
           .eq('id', chatId);
 
-        if (chatUpdateError) {
-          console.error('Error updating chat preview:', chatUpdateError);
+        if (chatUpdateResult.error && adminClient) {
+          const adminChatUpdateResult = await adminClient
+            .from('chats')
+            .update({ last_message: firstMessage, updated_at: new Date().toISOString() })
+            .eq('id', chatId);
+
+          if (adminChatUpdateResult.error) {
+            console.error('Error updating chat preview via admin client:', adminChatUpdateResult.error);
+          }
+        } else if (chatUpdateResult.error) {
+          console.error('Error updating chat preview:', chatUpdateResult.error);
         }
 
-        const { error: notificationError } = await supabase.from('notifications').insert({
-          user_id: targetUserId,
-          actor_id: user.id,
+        await createNotificationAndPush({
+          userId: targetUserId,
+          actorId: user.id,
           type: 'chat',
           title: '새 채팅이 시작되었습니다.',
           body: firstMessage,
           link: `/chat?chat=${chatId}`,
+          dedupeKey: `chat-start:${chatId}:${targetUserId}`,
         });
-
-        if (notificationError) {
-          console.error('Error creating chat notification:', notificationError);
-        }
       }
     }
 
-    return NextResponse.json({ ok: true, chatId });
+    return NextResponse.json({
+      ok: true,
+      chatId,
+      createdNewChat,
+      warning: participantLookupWarning,
+    });
   } catch (error) {
     console.error('POST /api/chats/start failed:', error);
-    return NextResponse.json({ error: 'Failed to start chat' }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: 'Failed to start chat',
+        code: 'CHAT_START_FAILED',
+        detail: toErrorMessage(error as Error),
+      },
+      { status: 500 }
+    );
   }
 }
 

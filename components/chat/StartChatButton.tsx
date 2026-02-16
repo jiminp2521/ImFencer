@@ -8,6 +8,19 @@ import { Button, buttonVariants } from '@/components/ui/button';
 
 type ButtonVariantProps = VariantProps<typeof buttonVariants>;
 
+type StartChatResponse =
+  | {
+      ok: true;
+      chatId: string;
+    }
+  | {
+      ok?: false;
+      error?: string;
+      code?: string;
+      detail?: string;
+      hint?: string | null;
+    };
+
 type StartChatButtonProps = {
   targetUserId: string;
   contextTitle?: string;
@@ -41,6 +54,7 @@ export function StartChatButton({
     try {
       const response = await fetch('/api/chats/start', {
         method: 'POST',
+        cache: 'no-store',
         headers: {
           'content-type': 'application/json',
         },
@@ -58,17 +72,23 @@ export function StartChatButton({
       }
 
       if (!response.ok) {
-        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        const body = (await response.json().catch(() => null)) as StartChatResponse | null;
         console.error('Start chat failed:', body);
-        if (body?.error) {
-          alert(`채팅 연결에 실패했습니다: ${body.error}`);
-        } else {
-          alert('채팅 연결에 실패했습니다.');
-        }
+
+        const lines = ['채팅 연결에 실패했습니다.'];
+        if (body && 'error' in body && body.error) lines.push(`사유: ${body.error}`);
+        if (body && 'code' in body && body.code) lines.push(`코드: ${body.code}`);
+        if (body && 'detail' in body && body.detail) lines.push(`상세: ${body.detail}`);
+        if (body && 'hint' in body && body.hint) lines.push(`안내: ${body.hint}`);
+        alert(lines.join('\n'));
         return;
       }
 
-      const body = (await response.json()) as { chatId: string };
+      const body = (await response.json()) as StartChatResponse;
+      if (!body || !('chatId' in body) || !body.chatId) {
+        alert('채팅방 ID를 받지 못했습니다. 다시 시도해주세요.');
+        return;
+      }
       router.push(`/chat?chat=${body.chatId}`);
     } catch (error) {
       console.error('Error starting chat:', error);
