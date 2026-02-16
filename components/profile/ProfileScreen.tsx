@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card';
 import { StartChatButton } from '@/components/chat/StartChatButton';
 import { createClient } from '@/lib/supabase-server';
 import { ProfileMenuButton } from '@/components/profile/ProfileMenuButton';
+import { ensureProfileRow } from '@/lib/ensure-profile';
 
 const weaponMap: Record<string, string> = {
   Fleuret: '플뢰레',
@@ -53,6 +54,14 @@ export async function ProfileScreen({
   const supabase = await createClient();
   const isOwner = Boolean(viewerUserId && viewerUserId === profileUserId);
 
+  if (isOwner) {
+    try {
+      await ensureProfileRow(supabase, profileUserId);
+    } catch (error) {
+      console.error('Error ensuring profile row:', error);
+    }
+  }
+
   const [profileResult, postsCountResult, likeCountResult, awardsCountResult, postsResult] = await Promise.all([
     supabase
       .from('profiles')
@@ -95,7 +104,19 @@ export async function ProfileScreen({
     console.error('Error fetching profile posts:', postsResult.error);
   }
 
-  const profile = profileResult.data as ProfileRow | null;
+  let profile = profileResult.data as ProfileRow | null;
+  if (!profile && isOwner) {
+    profile = {
+      username: null,
+      weapon_type: null,
+      tier: null,
+      avatar_url: null,
+      user_type: null,
+      club_id: null,
+      fencing_clubs: null,
+    };
+  }
+
   if (!profile) {
     notFound();
   }

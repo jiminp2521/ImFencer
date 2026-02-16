@@ -6,13 +6,14 @@ import { createClient } from '@/lib/supabase';
 
 type ChatRealtimeSyncProps = {
   chatIds: string[];
+  onMessage?: () => void;
 };
 
 type MessageRow = {
   chat_id?: string;
 };
 
-export function ChatRealtimeSync({ chatIds }: ChatRealtimeSyncProps) {
+export function ChatRealtimeSync({ chatIds, onMessage }: ChatRealtimeSyncProps) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -31,7 +32,11 @@ export function ChatRealtimeSync({ chatIds }: ChatRealtimeSyncProps) {
       }
 
       timeoutRef.current = setTimeout(() => {
-        router.refresh();
+        if (onMessage) {
+          onMessage();
+        } else {
+          router.refresh();
+        }
       }, 420);
     };
 
@@ -55,7 +60,7 @@ export function ChatRealtimeSync({ chatIds }: ChatRealtimeSyncProps) {
 
       supabase.removeChannel(channel);
     };
-  }, [chatIds, router, supabase]);
+  }, [chatIds, onMessage, router, supabase]);
 
   return null;
 }

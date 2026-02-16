@@ -8,9 +8,10 @@ import { Textarea } from '@/components/ui/textarea';
 
 type ChatComposerProps = {
   chatId: string;
+  onSent?: () => void;
 };
 
-export function ChatComposer({ chatId }: ChatComposerProps) {
+export function ChatComposer({ chatId, onSent }: ChatComposerProps) {
   const router = useRouter();
   const [content, setContent] = useState('');
   const [pending, setPending] = useState(false);
@@ -44,7 +45,11 @@ export function ChatComposer({ chatId }: ChatComposerProps) {
       }
 
       setContent('');
-      router.refresh();
+      if (onSent) {
+        onSent();
+      } else {
+        router.refresh();
+      }
     } finally {
       setPending(false);
     }

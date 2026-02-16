@@ -5,6 +5,7 @@ import { useEffect, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Home, Sword, ShoppingBag, MessageCircle, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { preloadSWRLite } from '@/lib/swr-lite';
 
 const tabs = [
     {
@@ -44,10 +45,31 @@ export function BottomNav() {
     useEffect(() => {
         if (shouldHideNav || prefetchedRef.current) return;
 
+        const preloadJson = async <T,>(key: string) => {
+            const response = await fetch(key, {
+                credentials: 'include',
+                cache: 'no-store',
+                headers: {
+                    'x-imfencer-prefetch': '1',
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to preload ${key}`);
+            }
+
+            return response.json() as Promise<T>;
+        };
+
         const prefetchTabs = () => {
             tabs.forEach((tab) => {
                 router.prefetch(tab.href);
             });
+
+            preloadSWRLite('/api/home/feed?scope=all&category=All&sort=latest&page=1', preloadJson, { staleTime: 30_000 });
+            preloadSWRLite('/api/market/feed?status=All&weapon=All&q=&page=1', preloadJson, { staleTime: 25_000 });
+            preloadSWRLite('/api/chat/overview?open=1', preloadJson, { staleTime: 8_000 });
+
             prefetchedRef.current = true;
         };
 

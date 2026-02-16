@@ -2,6 +2,8 @@
 
 import { createClient } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
+import { Capacitor } from '@capacitor/core';
+import { Browser } from '@capacitor/browser';
 
 interface SocialLoginProps {
     mode?: 'login' | 'signup';
@@ -11,16 +13,31 @@ export function SocialLogin({ mode = 'login' }: SocialLoginProps) {
     const supabase = createClient();
 
     const handleSocialLogin = async (provider: 'google' | 'kakao' | 'apple') => {
-        const { error } = await supabase.auth.signInWithOAuth({
+        const isNative = Capacitor.isNativePlatform();
+        const appScheme = process.env.NEXT_PUBLIC_APP_SCHEME || 'imfencer';
+        const redirectTo = isNative
+            ? `${appScheme}://auth/callback`
+            : `${window.location.origin}/auth/callback`;
+
+        const { data, error } = await supabase.auth.signInWithOAuth({
             provider,
             options: {
-                redirectTo: `${window.location.origin}/auth/callback`,
+                redirectTo,
+                skipBrowserRedirect: isNative,
             },
         });
 
         if (error) {
             console.error('Social login error:', error);
             alert('로그인에 실패했습니다. 다시 시도해주세요.');
+            return;
+        }
+
+        if (isNative && data?.url) {
+            await Browser.open({ url: data.url }).catch((browserError) => {
+                console.error('Failed to open browser for oauth:', browserError);
+                alert('브라우저 열기에 실패했습니다.');
+            });
         }
     };
 
@@ -30,15 +47,6 @@ export function SocialLogin({ mode = 'login' }: SocialLoginProps) {
 
     return (
         <div className="flex flex-col gap-3 w-full">
-            <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t border-gray-800" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-gray-900 px-2 text-gray-500">또는</span>
-                </div>
-            </div>
-
             {/* Kakao Login */}
             <Button
                 type="button"
