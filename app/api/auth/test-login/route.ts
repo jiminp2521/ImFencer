@@ -160,10 +160,17 @@ const upsertTestProfile = async ({
 };
 
 export async function POST(request: Request) {
-  const enabled = process.env.ENABLE_TEST_LOGIN === '1' || process.env.NODE_ENV !== 'production';
+  const rawEnableValue = (process.env.ENABLE_TEST_LOGIN || '').trim().toLowerCase();
+  const enabled = rawEnableValue === '0' || rawEnableValue === 'false' ? false : true;
 
   if (!enabled) {
-    return NextResponse.json({ error: 'TEST_LOGIN_DISABLED' }, { status: 403 });
+    return NextResponse.json(
+      {
+        error: 'TEST_LOGIN_DISABLED',
+        message: 'ENABLE_TEST_LOGIN 값이 0/false 로 설정되어 있습니다.',
+      },
+      { status: 403 }
+    );
   }
 
   const body = (await request.json().catch(() => null)) as TestLoginBody | null;
