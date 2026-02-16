@@ -60,7 +60,11 @@ export function StartChatButton({
       if (!response.ok) {
         const body = (await response.json().catch(() => null)) as { error?: string } | null;
         console.error('Start chat failed:', body);
-        alert('채팅 연결에 실패했습니다.');
+        if (body?.error) {
+          alert(`채팅 연결에 실패했습니다: ${body.error}`);
+        } else {
+          alert('채팅 연결에 실패했습니다.');
+        }
         return;
       }
 

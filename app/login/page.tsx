@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { createClient } from '@/lib/supabase';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { SocialLogin } from '@/components/auth/SocialLogin';
@@ -12,37 +11,30 @@ type TestAccountKey = 'test-1' | 'test-2' | 'test-3';
 type TestAccount = {
   key: TestAccountKey;
   label: string;
-  email: string;
-  password: string;
 };
 
 type TestLoginResponse = {
   ok?: boolean;
   error?: string;
+  message?: string;
   accountEmail?: string;
+  signedInEmail?: string;
   username?: string;
-  profileUpdated?: boolean;
-  profileWarning?: string | null;
+  userId?: string;
 };
 
 const TEST_ACCOUNTS: TestAccount[] = [
   {
     key: 'test-1',
     label: '테스트계정1 로그인',
-    email: process.env.NEXT_PUBLIC_TEST_ACCOUNT_1_EMAIL || 'test1@imfencer.com',
-    password: process.env.NEXT_PUBLIC_TEST_ACCOUNT_1_PASSWORD || 'testuser1234!',
   },
   {
     key: 'test-2',
     label: '테스트계정2 로그인',
-    email: process.env.NEXT_PUBLIC_TEST_ACCOUNT_2_EMAIL || 'test2@imfencer.com',
-    password: process.env.NEXT_PUBLIC_TEST_ACCOUNT_2_PASSWORD || 'testuser1234!',
   },
   {
     key: 'test-3',
     label: '테스트계정3 로그인',
-    email: process.env.NEXT_PUBLIC_TEST_ACCOUNT_3_EMAIL || 'test3@imfencer.com',
-    password: process.env.NEXT_PUBLIC_TEST_ACCOUNT_3_PASSWORD || 'testuser1234!',
   },
 ];
 
@@ -53,31 +45,10 @@ const sanitizeNext = (value: string | null) => {
   return value;
 };
 
-const syncTestNickname = async (accountKey: TestAccountKey) => {
-  const response = await fetch('/api/profile/test-account', {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({ accountKey }),
-  });
-
-  if (!response.ok) {
-    const body = (await response.json().catch(() => null)) as { error?: string; message?: string } | null;
-    return {
-      ok: false,
-      error: body?.message || body?.error || '닉네임 동기화 실패',
-    };
-  }
-
-  return { ok: true };
-};
-
 export default function LoginPage() {
   const [pendingAccountKey, setPendingAccountKey] = useState<string | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const supabase = createClient();
   const deletedAccount = searchParams.get('deleted') === '1';
   const nextPath = useMemo(() => sanitizeNext(searchParams.get('next')), [searchParams]);
 
@@ -95,36 +66,16 @@ export default function LoginPage() {
         body: JSON.stringify({ accountKey: account.key }),
       });
 
-      const testLoginBody = (await testLoginResponse
+      const body = (await testLoginResponse
         .json()
         .catch(() => null)) as TestLoginResponse | null;
 
-      if (testLoginResponse.ok && testLoginBody?.ok) {
-        if (testLoginBody.profileWarning) {
-          alert(`로그인은 성공했지만 닉네임 설정 경고가 있습니다: ${testLoginBody.profileWarning}`);
-        }
-
-        router.push(nextPath);
-        router.refresh();
+      if (!testLoginResponse.ok || !body?.ok) {
+        const detail = body?.message || body?.error || '테스트 계정 로그인 실패';
+        const emailInfo = body?.accountEmail ? `\n요청 이메일: ${body.accountEmail}` : '';
+        const signedInInfo = body?.signedInEmail ? `\n실제 로그인 이메일: ${body.signedInEmail}` : '';
+        alert(`${detail}${emailInfo}${signedInInfo}`);
         return;
-      }
-
-      const { error } = await supabase.auth.signInWithPassword({
-        email: account.email,
-        password: account.password,
-      });
-
-      if (error) {
-        const message = testLoginBody?.error || error.message;
-        alert(
-          `테스트 계정 로그인 실패: ${message}\n시도한 계정: ${account.email}\n비밀번호: ${account.password}`
-        );
-        return;
-      }
-
-      const nicknameSyncResult = await syncTestNickname(account.key);
-      if (!nicknameSyncResult.ok) {
-        alert(`로그인은 성공했지만 닉네임 설정이 실패했습니다: ${nicknameSyncResult.error}`);
       }
 
       router.push(nextPath);

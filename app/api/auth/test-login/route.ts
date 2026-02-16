@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase-server';
+import { createClient as createSupabaseClient, type SupabaseClient } from '@supabase/supabase-js';
 import { ensureProfileRow } from '@/lib/ensure-profile';
 
 type TestAccountKey = 'test-1' | 'test-2' | 'test-3';
@@ -18,32 +19,144 @@ const DEFAULT_PASSWORD = 'testuser1234!';
 
 const normalize = (value: string) => value.trim().toLowerCase();
 
-const resolveAccountConfig = (accountKey: TestAccountKey): TestAccountConfig => {
-  if (accountKey === 'test-1') {
-    return {
-      email: normalize(process.env.TEST_ACCOUNT_1_EMAIL || 'test1@imfencer.com'),
-      password: process.env.TEST_ACCOUNT_1_PASSWORD || DEFAULT_PASSWORD,
-      username: 'test1',
-    };
-  }
-
-  if (accountKey === 'test-2') {
-    return {
-      email: normalize(process.env.TEST_ACCOUNT_2_EMAIL || 'test2@imfencer.com'),
-      password: process.env.TEST_ACCOUNT_2_PASSWORD || DEFAULT_PASSWORD,
-      username: 'test2',
-    };
-  }
-
-  return {
+const resolveAccounts = (): Record<TestAccountKey, TestAccountConfig> => ({
+  'test-1': {
+    email: normalize(process.env.TEST_ACCOUNT_1_EMAIL || 'test1@imfencer.com'),
+    password: process.env.TEST_ACCOUNT_1_PASSWORD || DEFAULT_PASSWORD,
+    username: 'test1',
+  },
+  'test-2': {
+    email: normalize(process.env.TEST_ACCOUNT_2_EMAIL || 'test2@imfencer.com'),
+    password: process.env.TEST_ACCOUNT_2_PASSWORD || DEFAULT_PASSWORD,
+    username: 'test2',
+  },
+  'test-3': {
     email: normalize(process.env.TEST_ACCOUNT_3_EMAIL || 'test3@imfencer.com'),
     password: process.env.TEST_ACCOUNT_3_PASSWORD || DEFAULT_PASSWORD,
     username: 'test3',
-  };
-};
+  },
+});
 
 const isValidAccountKey = (value: string | undefined): value is TestAccountKey => {
   return value === 'test-1' || value === 'test-2' || value === 'test-3';
+};
+
+const createAdminClient = (): SupabaseClient | null => {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !serviceRoleKey) {
+    return null;
+  }
+
+  return createSupabaseClient(url, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+};
+
+const upsertTestProfile = async ({
+  userClient,
+  adminClient,
+  userId,
+  username,
+}: {
+  userClient: SupabaseClient;
+  adminClient: SupabaseClient | null;
+  userId: string;
+  username: string;
+}) => {
+  const nowIso = new Date().toISOString();
+
+  if (adminClient) {
+    const { error } = await adminClient.from('profiles').upsert(
+      {
+        id: userId,
+        username,
+        updated_at: nowIso,
+      },
+      {
+        onConflict: 'id',
+      }
+    );
+
+    if (error) {
+      return {
+        ok: false,
+        reason: error.message || 'Failed to update test profile via admin client',
+      };
+    }
+
+    const { data: profileData, error: profileReadError } = await adminClient
+      .from('profiles')
+      .select('username')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (profileReadError) {
+      return {
+        ok: false,
+        reason: profileReadError.message || 'Failed to verify test profile',
+      };
+    }
+
+    if ((profileData?.username || null) !== username) {
+      return {
+        ok: false,
+        reason: `Profile nickname mismatch (expected ${username}, got ${profileData?.username || 'null'})`,
+      };
+    }
+
+    return { ok: true };
+  }
+
+  try {
+    await ensureProfileRow(userClient, userId);
+  } catch (error) {
+    return {
+      ok: false,
+      reason: error instanceof Error ? error.message : 'Failed to ensure profile row',
+    };
+  }
+
+  const { error } = await userClient
+    .from('profiles')
+    .update({
+      username,
+      updated_at: nowIso,
+    })
+    .eq('id', userId);
+
+  if (error) {
+    return {
+      ok: false,
+      reason: error.message || 'Failed to update test profile via user session',
+    };
+  }
+
+  const { data: profileData, error: profileReadError } = await userClient
+    .from('profiles')
+    .select('username')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (profileReadError) {
+    return {
+      ok: false,
+      reason: profileReadError.message || 'Failed to verify test profile',
+    };
+  }
+
+  if ((profileData?.username || null) !== username) {
+    return {
+      ok: false,
+      reason: `Profile nickname mismatch (expected ${username}, got ${profileData?.username || 'null'})`,
+    };
+  }
+
+  return { ok: true };
 };
 
 export async function POST(request: Request) {
@@ -60,8 +173,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid accountKey' }, { status: 400 });
   }
 
-  const account = resolveAccountConfig(accountKey);
+  const accountMap = resolveAccounts();
+  const account = accountMap[accountKey];
+
+  const configuredEmails = Object.values(accountMap).map((item) => item.email);
+  if (new Set(configuredEmails).size !== configuredEmails.length) {
+    return NextResponse.json(
+      {
+        error: 'TEST_ACCOUNT_CONFIG_DUPLICATED_EMAILS',
+        message: '테스트 계정 이메일 3개가 서로 달라야 합니다.',
+      },
+      { status: 500 }
+    );
+  }
+
   const supabase = await createClient();
+  const adminClient = createAdminClient();
+
+  await supabase.auth.signOut();
 
   const { data, error } = await supabase.auth.signInWithPassword({
     email: account.email,
@@ -82,40 +211,47 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Failed to create session' }, { status: 500 });
   }
 
-  let profileUpdated = false;
-  let profileWarning: string | null = null;
+  const signedInEmail = normalize(data.user.email || '');
+  if (!signedInEmail || signedInEmail !== account.email) {
+    await supabase.auth.signOut();
 
-  try {
-    await ensureProfileRow(supabase, data.user.id);
+    return NextResponse.json(
+      {
+        error: 'TEST_ACCOUNT_EMAIL_MISMATCH',
+        message: '요청한 테스트 계정과 실제 로그인된 계정 이메일이 다릅니다.',
+        accountEmail: account.email,
+        signedInEmail,
+      },
+      { status: 409 }
+    );
+  }
 
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .upsert(
-        {
-          id: data.user.id,
-          username: account.username,
-          updated_at: new Date().toISOString(),
-        },
-        {
-          onConflict: 'id',
-        }
-      );
+  const profileUpdateResult = await upsertTestProfile({
+    userClient: supabase,
+    adminClient,
+    userId: data.user.id,
+    username: account.username,
+  });
 
-    if (profileError) {
-      profileWarning = profileError.message || 'Failed to set test profile nickname';
-    } else {
-      profileUpdated = true;
-    }
-  } catch (profileError) {
-    const message = profileError instanceof Error ? profileError.message : 'Failed to update test profile';
-    profileWarning = message;
+  if (!profileUpdateResult.ok) {
+    await supabase.auth.signOut();
+
+    return NextResponse.json(
+      {
+        error: 'TEST_PROFILE_SYNC_FAILED',
+        message: profileUpdateResult.reason,
+        userId: data.user.id,
+        accountEmail: account.email,
+        username: account.username,
+      },
+      { status: 409 }
+    );
   }
 
   return NextResponse.json({
     ok: true,
+    userId: data.user.id,
     accountEmail: account.email,
     username: account.username,
-    profileUpdated,
-    profileWarning,
   });
 }
