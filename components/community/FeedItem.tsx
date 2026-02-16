@@ -46,7 +46,7 @@ export function FeedItem({
     };
 
     return (
-        <Link href={`/posts/${id}`} className="block border-b border-white/10 p-4 hover:bg-white/5 transition-colors active:bg-white/10">
+        <Link href={`/posts/${id}`} prefetch={false} className="block border-b border-white/10 p-4 hover:bg-white/5 transition-colors active:bg-white/10">
             <div className="flex gap-4">
                 <div className="flex-1 space-y-2">
                     <div className="flex items-center gap-2 text-xs text-gray-400">

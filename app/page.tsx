@@ -1,6 +1,6 @@
 import Link from 'next/link';
-import { Bell } from 'lucide-react';
 import { FeedItem } from '@/components/community/FeedItem';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { FloatingActionButton } from '@/components/ui/floating-action-button';
 import { createPublicClient } from '@/lib/supabase-public';
 import { createClient as createServerClient } from '@/lib/supabase-server';
@@ -114,7 +114,6 @@ const pickProfile = (profiles: FallbackPostRow['profiles']) => {
 export default async function Home({ searchParams }: HomePageProps) {
   const resolvedSearchParams = await searchParams;
   const supabase = createPublicClient();
-  const serverSupabase = await createServerClient();
   const requestedPage = parsePositivePage(resolvedSearchParams.page);
 
   const selectedScope = scopeFilters.some((filter) => filter.value === resolvedSearchParams.scope)
@@ -127,66 +126,33 @@ export default async function Home({ searchParams }: HomePageProps) {
     ? resolvedSearchParams.sort!
     : 'latest';
 
-  const {
-    data: { user },
-  } = await serverSupabase.auth.getUser();
-
-  const myProfileResult = user
-    ? await serverSupabase.from('profiles').select('club_id').eq('id', user.id).maybeSingle()
-    : { data: null, error: null };
-  const unreadNotificationsResult = user
-    ? await serverSupabase
-        .from('notifications')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('is_read', false)
-    : { count: 0, error: null };
-
-  if (myProfileResult.error) {
-    console.error('Error fetching my profile club:', myProfileResult.error);
-  }
-  if (unreadNotificationsResult.error && unreadNotificationsResult.error.code !== '42P01') {
-    console.error('Error fetching unread notifications count:', unreadNotificationsResult.error);
-  }
-
-  const myClubId = myProfileResult.data?.club_id || null;
-  const canUseClubFeed = Boolean(user && myClubId);
-  const unreadNotificationsCount = unreadNotificationsResult.count || 0;
-
-  let totalCount = 0;
-  let totalCountError: { message?: string } | null = null;
+  let user: { id: string } | null = null;
+  let myClubId: string | null = null;
 
   if (selectedScope === 'club') {
-    if (canUseClubFeed) {
-      let countQuery = supabase
-        .from('posts')
-        .select('id, profiles:author_id!inner (club_id)', { count: 'exact', head: true })
-        .eq('profiles.club_id', myClubId!);
+    const serverSupabase = await createServerClient();
+    const {
+      data: { user: scopeUser },
+    } = await serverSupabase.auth.getUser();
 
-      if (selectedCategory !== 'All') {
-        countQuery = countQuery.eq('category', selectedCategory);
+    if (scopeUser) {
+      user = { id: scopeUser.id };
+      const myProfileResult = await serverSupabase
+        .from('profiles')
+        .select('club_id')
+        .eq('id', scopeUser.id)
+        .maybeSingle();
+
+      if (myProfileResult.error) {
+        console.error('Error fetching my profile club:', myProfileResult.error);
+      } else {
+        myClubId = myProfileResult.data?.club_id || null;
       }
-
-      const countResult = await countQuery;
-      totalCount = countResult.count || 0;
-      totalCountError = countResult.error;
     }
-  } else {
-    let countQuery = supabase.from('posts').select('id', { count: 'exact', head: true });
-    if (selectedCategory !== 'All') {
-      countQuery = countQuery.eq('category', selectedCategory);
-    }
-    const countResult = await countQuery;
-    totalCount = countResult.count || 0;
-    totalCountError = countResult.error;
   }
 
-  if (totalCountError) {
-    console.error('Error fetching feed total count:', totalCountError);
-  }
-
-  const totalPages = Math.max(1, Math.ceil(totalCount / FEED_PAGE_SIZE));
-  const currentPage = Math.min(requestedPage, totalPages);
+  const canUseClubFeed = Boolean(user && myClubId);
+  const currentPage = requestedPage;
   const offset = (currentPage - 1) * FEED_PAGE_SIZE;
   const categoryArg = selectedCategory === 'All' ? null : selectedCategory;
 
@@ -197,7 +163,7 @@ export default async function Home({ searchParams }: HomePageProps) {
     ? await supabase.rpc('get_feed_posts', {
         p_category: categoryArg,
         p_sort: selectedSort,
-        p_limit: FEED_PAGE_SIZE,
+        p_limit: FEED_PAGE_SIZE + 1,
         p_offset: offset,
       })
     : { data: null, error: null };
@@ -230,7 +196,7 @@ export default async function Home({ searchParams }: HomePageProps) {
         profiles:author_id${selectedScope === 'club' ? '!inner' : ''} (username, club_id)
       `)
       .order('created_at', { ascending: false })
-      .range(offset, offset + FEED_PAGE_SIZE - 1);
+      .range(offset, offset + FEED_PAGE_SIZE);
 
     if (selectedCategory !== 'All') {
       fallbackQuery = fallbackQuery.eq('category', selectedCategory);
@@ -311,6 +277,11 @@ export default async function Home({ searchParams }: HomePageProps) {
     }
   }
 
+  const hasNextPage = posts.length > FEED_PAGE_SIZE;
+  if (hasNextPage) {
+    posts = posts.slice(0, FEED_PAGE_SIZE);
+  }
+
   return (
     <div className="pb-20">
       <header className="sticky top-0 z-40 bg-black/80 backdrop-blur-md border-b border-white/10 px-4 py-3 flex items-center justify-between h-14">
@@ -318,17 +289,7 @@ export default async function Home({ searchParams }: HomePageProps) {
           <img src="/app-logo.png" alt="ImFencer" className="object-contain w-full h-full object-left" />
         </div>
         <div className="flex gap-2">
-          <Link
-            href={user ? '/notifications' : '/login?next=%2Fnotifications'}
-            className="relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-gray-900 text-gray-300 hover:text-white hover:bg-gray-800 transition-colors"
-          >
-            <Bell className="h-4 w-4" />
-            {unreadNotificationsCount > 0 ? (
-              <span className="absolute -top-1 -right-1 inline-flex min-w-5 h-5 px-1.5 items-center justify-center rounded-full bg-red-500 text-[10px] font-semibold text-white">
-                {unreadNotificationsCount > 99 ? '99+' : unreadNotificationsCount}
-              </span>
-            ) : null}
-          </Link>
+          <NotificationBell />
         </div>
       </header>
 
@@ -426,7 +387,7 @@ export default async function Home({ searchParams }: HomePageProps) {
         )}
       </main>
 
-      {totalPages > 1 ? (
+      {currentPage > 1 || hasNextPage ? (
         <div className="border-t border-white/5 px-4 py-4 flex items-center justify-between text-xs">
           {currentPage > 1 ? (
             <Link
@@ -441,11 +402,9 @@ export default async function Home({ searchParams }: HomePageProps) {
             </span>
           )}
 
-          <span className="text-gray-500">
-            {currentPage} / {totalPages}
-          </span>
+          <span className="text-gray-500">{currentPage}페이지</span>
 
-          {currentPage < totalPages ? (
+          {hasNextPage ? (
             <Link
               href={buildHomeHref(selectedScope, selectedCategory, selectedSort, currentPage + 1)}
               className="rounded-full border border-gray-700 bg-gray-900 px-3 py-1.5 text-gray-300 hover:bg-gray-800"

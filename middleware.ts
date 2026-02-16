@@ -35,12 +35,40 @@ export async function middleware(request: NextRequest) {
         data: { user },
     } = await supabase.auth.getUser()
 
-    // Protected Routes Logic
-    const path = request.nextUrl.pathname;
-    if (!user && (path.startsWith('/write') || path.startsWith('/profile') || path.startsWith('/market/write'))) {
-        // Redirect unauthenticated users to login page
+    if (!user) {
         const url = request.nextUrl.clone()
         url.pathname = '/login'
+        url.searchParams.set('next', `${request.nextUrl.pathname}${request.nextUrl.search}`)
+        return NextResponse.redirect(url)
+    }
+
+    const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('is_deleted, user_type')
+        .eq('id', user.id)
+        .maybeSingle()
+
+    if (profileError) {
+        console.error('Middleware profile check failed:', profileError)
+        return supabaseResponse
+    }
+
+    if (profile?.is_deleted) {
+        await supabase.auth.signOut()
+        const url = request.nextUrl.clone()
+        url.pathname = '/login'
+        url.searchParams.set('deleted', '1')
+        return NextResponse.redirect(url)
+    }
+
+    const path = request.nextUrl.pathname
+    const isAdminRoute = path.startsWith('/admin')
+    const userType = profile?.user_type || ''
+    const isAdmin = userType === 'admin' || userType === 'master' || userType === 'operator'
+
+    if (isAdminRoute && !isAdmin) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/profile'
         return NextResponse.redirect(url)
     }
 
@@ -49,13 +77,12 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
     matcher: [
-        /*
-         * Match all request paths except for the ones starting with:
-         * - _next/static (static files)
-         * - _next/image (image optimization files)
-         * - favicon.ico (favicon file)
-         * Feel free to modify this pattern to include more paths.
-         */
-        '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+        '/write/:path*',
+        '/profile/:path*',
+        '/market/write/:path*',
+        '/fencing/lessons/write/:path*',
+        '/activity/:path*',
+        '/notifications/:path*',
+        '/admin/:path*',
     ],
 }

@@ -33,6 +33,8 @@ type LessonReviewRow = {
   rating: number;
 };
 
+const LESSON_LIST_LIMIT = 40;
+
 const weaponLabelMap: Record<string, string> = {
   Epee: '에페',
   Sabre: '사브르',
@@ -52,28 +54,28 @@ const pickOne = <T,>(value: T | T[] | null): T | null => {
 
 export default async function FencingLessonsPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const lessonsResult = await supabase
-    .from('fencing_lesson_products')
-    .select(`
-      id,
-      coach_id,
-      title,
-      description,
-      price,
-      lesson_mode,
-      location_text,
-      weapon_type,
-      duration_minutes,
-      max_students,
-      profiles:coach_id (username)
-    `)
-    .eq('is_active', true)
-    .order('created_at', { ascending: false })
-    .limit(120);
+  const [userResult, lessonsResult] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase
+      .from('fencing_lesson_products')
+      .select(`
+        id,
+        coach_id,
+        title,
+        description,
+        price,
+        lesson_mode,
+        location_text,
+        weapon_type,
+        duration_minutes,
+        max_students,
+        profiles:coach_id (username)
+      `)
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .limit(LESSON_LIST_LIMIT),
+  ]);
+  const user = userResult.data.user;
 
   if (lessonsResult.error) {
     console.error('Error fetching fencing lessons:', lessonsResult.error);

@@ -100,29 +100,7 @@ export default async function MarketPage({ searchParams }: MarketPageProps) {
     ? resolvedSearchParams.weapon!
     : 'All';
   const searchText = (resolvedSearchParams.q || '').trim();
-
-  let countQuery = supabase.from('market_items').select('id', { count: 'exact', head: true });
-
-  if (selectedStatus !== 'All') {
-    countQuery = countQuery.eq('status', selectedStatus);
-  }
-
-  if (selectedWeapon !== 'All') {
-    countQuery = countQuery.eq('weapon_type', selectedWeapon);
-  }
-
-  if (searchText) {
-    const escaped = searchText.replace(/[%_]/g, '');
-    countQuery = countQuery.or(`title.ilike.%${escaped}%,brand.ilike.%${escaped}%`);
-  }
-
-  const { count: totalCount, error: countError } = await countQuery;
-  if (countError) {
-    console.error('Error fetching market item count:', countError);
-  }
-
-  const totalPages = Math.max(1, Math.ceil((totalCount || 0) / MARKET_PAGE_SIZE));
-  const currentPage = Math.min(requestedPage, totalPages);
+  const currentPage = requestedPage;
   const offset = (currentPage - 1) * MARKET_PAGE_SIZE;
 
   let query = supabase
@@ -140,7 +118,7 @@ export default async function MarketPage({ searchParams }: MarketPageProps) {
       profiles:seller_id (username)
     `)
     .order('created_at', { ascending: false })
-    .range(offset, offset + MARKET_PAGE_SIZE - 1);
+    .range(offset, offset + MARKET_PAGE_SIZE);
 
   if (selectedStatus !== 'All') {
     query = query.eq('status', selectedStatus);
@@ -160,6 +138,10 @@ export default async function MarketPage({ searchParams }: MarketPageProps) {
   if (error) {
     console.error('Error fetching market items:', error);
   }
+
+  const list = items || [];
+  const hasNextPage = list.length > MARKET_PAGE_SIZE;
+  const visibleItems = hasNextPage ? list.slice(0, MARKET_PAGE_SIZE) : list;
 
   return (
     <div className="min-h-screen pb-20">
@@ -224,9 +206,7 @@ export default async function MarketPage({ searchParams }: MarketPageProps) {
 
         {searchText ? (
           <div className="flex items-center justify-between text-[11px] text-gray-500">
-            <span>
-              &quot;{searchText}&quot; 검색 결과 {totalCount || 0}건
-            </span>
+            <span>&quot;{searchText}&quot; 검색 중</span>
             <Link href={buildMarketHref(selectedStatus, selectedWeapon, '', 1)} className="text-gray-400 hover:text-gray-200">
               검색 해제
             </Link>
@@ -235,9 +215,9 @@ export default async function MarketPage({ searchParams }: MarketPageProps) {
       </div>
 
       <main>
-        {items && items.length > 0 ? (
+        {visibleItems.length > 0 ? (
           <div className="divide-y divide-white/10">
-            {items.map((item) => {
+            {visibleItems.map((item) => {
               const profile = Array.isArray(item.profiles) ? item.profiles[0] : item.profiles;
               const statusClass = statusStyleMap[item.status] || 'border-gray-700 bg-gray-800/60 text-gray-300';
 
@@ -245,6 +225,7 @@ export default async function MarketPage({ searchParams }: MarketPageProps) {
                 <Link
                   key={item.id}
                   href={`/market/${item.id}`}
+                  prefetch={false}
                   className="block p-4 hover:bg-white/5 transition-colors"
                 >
                   <div className="flex gap-3">
@@ -303,7 +284,7 @@ export default async function MarketPage({ searchParams }: MarketPageProps) {
         )}
       </main>
 
-      {totalPages > 1 ? (
+      {currentPage > 1 || hasNextPage ? (
         <div className="border-t border-white/5 px-4 py-4 flex items-center justify-between text-xs">
           {currentPage > 1 ? (
             <Link
@@ -318,11 +299,9 @@ export default async function MarketPage({ searchParams }: MarketPageProps) {
             </span>
           )}
 
-          <span className="text-gray-500">
-            {currentPage} / {totalPages}
-          </span>
+          <span className="text-gray-500">{currentPage}페이지</span>
 
-          {currentPage < totalPages ? (
+          {hasNextPage ? (
             <Link
               href={buildMarketHref(selectedStatus, selectedWeapon, searchText, currentPage + 1)}
               className="rounded-full border border-gray-700 bg-gray-900 px-3 py-1.5 text-gray-300 hover:bg-gray-800"
