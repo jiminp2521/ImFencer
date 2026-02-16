@@ -17,6 +17,7 @@ type TestAccountConfig = {
 };
 
 const DEFAULT_PASSWORD = 'testuser1234!';
+const TEST_LOGIN_API_VERSION = '2026-02-17-test-login-v2';
 
 const normalize = (value: string) => value.trim().toLowerCase();
 const maskPrefix = (value: string | undefined, length = 18) => {
@@ -28,6 +29,8 @@ const getProjectRef = (url: string | undefined) => {
   const match = url.match(/^https:\/\/([a-z0-9-]+)\.supabase\.co/i);
   return match?.[1] || '(invalid-url)';
 };
+
+const isPublishableKey = (value: string) => value.startsWith('sb_publishable_');
 
 const resolveAccounts = (): Record<TestAccountKey, TestAccountConfig> => ({
   'test-1': {
@@ -197,6 +200,21 @@ export async function POST(request: Request) {
   const anonKeyPrefix = maskPrefix(activeKey);
   const projectRef = getProjectRef(getSupabaseUrl());
 
+  if (!isPublishableKey(activeKey)) {
+    return NextResponse.json(
+      {
+        error: 'SUPABASE_PUBLISHABLE_KEY_REQUIRED',
+        message:
+          '프로덕션 서버 키가 sb_publishable_ 형식이 아닙니다. Vercel Production의 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY를 확인하세요.',
+        activeAnonKeyPrefix: anonKeyPrefix,
+        activeProjectRef: projectRef,
+        activeKeySource: keySource,
+        apiVersion: TEST_LOGIN_API_VERSION,
+      },
+      { status: 500 }
+    );
+  }
+
   const configuredEmails = Object.values(accountMap).map((item) => item.email);
   if (new Set(configuredEmails).size !== configuredEmails.length) {
     return NextResponse.json(
@@ -233,6 +251,7 @@ export async function POST(request: Request) {
         activeAnonKeyPrefix: anonKeyPrefix,
         activeProjectRef: projectRef,
         activeKeySource: keySource,
+        apiVersion: TEST_LOGIN_API_VERSION,
       },
       { status: 401 }
     );
@@ -284,5 +303,22 @@ export async function POST(request: Request) {
     userId: data.user.id,
     accountEmail: account.email,
     username: account.username,
+    apiVersion: TEST_LOGIN_API_VERSION,
+  });
+}
+
+export async function GET() {
+  const activeKey = getSupabasePublishableKey();
+  const keySource = getSupabaseKeySource();
+
+  return NextResponse.json({
+    ok: true,
+    apiVersion: TEST_LOGIN_API_VERSION,
+    enabled: (process.env.ENABLE_TEST_LOGIN || '').trim().toLowerCase() !== '0' &&
+      (process.env.ENABLE_TEST_LOGIN || '').trim().toLowerCase() !== 'false',
+    keySource,
+    keyPrefix: maskPrefix(activeKey),
+    isPublishableKey: isPublishableKey(activeKey),
+    projectRef: getProjectRef(getSupabaseUrl()),
   });
 }

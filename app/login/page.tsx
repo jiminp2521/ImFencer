@@ -24,7 +24,10 @@ type TestLoginResponse = {
   activeAnonKeyPrefix?: string;
   activeProjectRef?: string;
   activeKeySource?: string;
+  apiVersion?: string;
 };
+
+const TEST_LOGIN_UI_VERSION = '2026-02-17-login-ui-v2';
 
 const TEST_ACCOUNTS: TestAccount[] = [
   {
@@ -80,7 +83,8 @@ export default function LoginPage() {
         const keyInfo = body?.activeAnonKeyPrefix ? `\n서버 키 prefix: ${body.activeAnonKeyPrefix}` : '';
         const keySourceInfo = body?.activeKeySource ? `\n서버 키 변수: ${body.activeKeySource}` : '';
         const projectInfo = body?.activeProjectRef ? `\n서버 프로젝트 ref: ${body.activeProjectRef}` : '';
-        alert(`${detail}${emailInfo}${signedInInfo}${keyInfo}${keySourceInfo}${projectInfo}`);
+        const versionInfo = `\nUI 버전: ${TEST_LOGIN_UI_VERSION}\nAPI 버전: ${body?.apiVersion || '(missing)'}`;
+        alert(`${detail}${emailInfo}${signedInInfo}${keyInfo}${keySourceInfo}${projectInfo}${versionInfo}`);
         return;
       }
 
