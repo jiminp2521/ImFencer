@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase-server';
-import { createAdminClient, hasServiceRole } from '@/lib/supabase-admin';
+import { createAdminClient, hasUsableServiceRole } from '@/lib/supabase-admin';
 import { ensureProfileRow } from '@/lib/ensure-profile';
 import { createNotificationAndPush } from '@/lib/notifications';
 
@@ -18,7 +18,7 @@ export async function POST(request: Request, { params }: RouteContext) {
   const { id: chatId } = await params;
   const supabase = await createClient();
   const adminClient = (() => {
-    if (!hasServiceRole) return null;
+    if (!hasUsableServiceRole) return null;
     try {
       return createAdminClient();
     } catch (error) {

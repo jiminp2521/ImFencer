@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { PostgrestError, SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase-server';
-import { createAdminClient, hasServiceRole } from '@/lib/supabase-admin';
+import { createAdminClient, hasUsableServiceRole } from '@/lib/supabase-admin';
 import { ensureProfileRow } from '@/lib/ensure-profile';
 import { createNotificationAndPush } from '@/lib/notifications';
 
@@ -21,6 +21,8 @@ type ChatInsertRow = {
 };
 
 const CHAT_RLS_FIX_HINT = 'Supabase SQL Editor에서 migrations/20260217_chat_rls_fix.sql 을 실행해주세요.';
+const SERVICE_ROLE_KEY_HINT =
+  'Vercel Production의 SUPABASE_SERVICE_ROLE_KEY를 Supabase Dashboard의 sb_secret_ 키로 교체하고 재배포해주세요.';
 
 const toErrorMessage = (error: PostgrestError | Error | null | undefined) => {
   if (!error) return 'Unknown error';
@@ -33,7 +35,7 @@ const isPolicyRelatedError = (message: string) =>
 const isLegacyKeyError = (message: string) => /legacy api keys are disabled/i.test(message);
 
 const getAdminClientSafe = () => {
-  if (!hasServiceRole) return null;
+  if (!hasUsableServiceRole) return null;
 
   try {
     return createAdminClient();
@@ -125,9 +127,10 @@ async function createChatRecord({
 
   return {
     ok: false as const,
-    detail: adminErrorMessage,
-    hint:
-      isLegacyKeyError(adminErrorMessage) || isPolicyRelatedError(userErrorMessage)
+    detail: isLegacyKeyError(adminErrorMessage) ? userErrorMessage : adminErrorMessage,
+    hint: isLegacyKeyError(adminErrorMessage)
+      ? SERVICE_ROLE_KEY_HINT
+      : isPolicyRelatedError(userErrorMessage)
         ? CHAT_RLS_FIX_HINT
         : null,
   };
@@ -195,9 +198,10 @@ async function upsertParticipant({
   return {
     ok: false as const,
     usedAdmin: true,
-    detail: adminErrorMessage,
-    hint:
-      isLegacyKeyError(adminErrorMessage) || isPolicyRelatedError(userErrorMessage)
+    detail: isLegacyKeyError(adminErrorMessage) ? userErrorMessage : adminErrorMessage,
+    hint: isLegacyKeyError(adminErrorMessage)
+      ? SERVICE_ROLE_KEY_HINT
+      : isPolicyRelatedError(userErrorMessage)
         ? CHAT_RLS_FIX_HINT
         : null,
   };
@@ -393,4 +397,3 @@ export async function POST(request: Request) {
     );
   }
 }
-

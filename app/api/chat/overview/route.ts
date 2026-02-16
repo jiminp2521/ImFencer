@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase-server';
-import { createAdminClient, hasServiceRole } from '@/lib/supabase-admin';
+import { createAdminClient, hasUsableServiceRole } from '@/lib/supabase-admin';
 import { withApiTiming } from '@/lib/api-timing';
 
 export const dynamic = 'force-dynamic';
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
 
     const supabase = await createClient();
     const adminClient = (() => {
-      if (!hasServiceRole) return null;
+      if (!hasUsableServiceRole) return null;
       try {
         return createAdminClient();
       } catch (error) {
