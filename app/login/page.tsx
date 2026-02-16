@@ -64,8 +64,9 @@ export default function LoginPage() {
     setPendingAccountKey(account.key);
 
     try {
-      const testLoginResponse = await fetch('/api/auth/test-login', {
+      const testLoginResponse = await fetch(`/api/auth/test-login-v2?t=${Date.now()}`, {
         method: 'POST',
+        cache: 'no-store',
         headers: {
           'content-type': 'application/json',
         },
