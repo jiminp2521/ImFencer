@@ -23,6 +23,7 @@ type TestLoginResponse = {
   userId?: string;
   activeAnonKeyPrefix?: string;
   activeProjectRef?: string;
+  activeKeySource?: string;
 };
 
 const TEST_ACCOUNTS: TestAccount[] = [
@@ -77,8 +78,9 @@ export default function LoginPage() {
         const emailInfo = body?.accountEmail ? `\n요청 이메일: ${body.accountEmail}` : '';
         const signedInInfo = body?.signedInEmail ? `\n실제 로그인 이메일: ${body.signedInEmail}` : '';
         const keyInfo = body?.activeAnonKeyPrefix ? `\n서버 키 prefix: ${body.activeAnonKeyPrefix}` : '';
+        const keySourceInfo = body?.activeKeySource ? `\n서버 키 변수: ${body.activeKeySource}` : '';
         const projectInfo = body?.activeProjectRef ? `\n서버 프로젝트 ref: ${body.activeProjectRef}` : '';
-        alert(`${detail}${emailInfo}${signedInInfo}${keyInfo}${projectInfo}`);
+        alert(`${detail}${emailInfo}${signedInInfo}${keyInfo}${keySourceInfo}${projectInfo}`);
         return;
       }
 

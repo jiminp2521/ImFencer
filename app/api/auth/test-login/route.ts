@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase-server';
 import { createClient as createSupabaseClient, type SupabaseClient } from '@supabase/supabase-js';
 import { ensureProfileRow } from '@/lib/ensure-profile';
+import { getSupabaseKeySource, getSupabasePublishableKey, getSupabaseUrl } from '@/lib/supabase-env';
 
 type TestAccountKey = 'test-1' | 'test-2' | 'test-3';
 
@@ -51,7 +52,7 @@ const isValidAccountKey = (value: string | undefined): value is TestAccountKey =
 };
 
 const createAdminClient = (): SupabaseClient | null => {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const url = getSupabaseUrl();
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!url || !serviceRoleKey) {
@@ -191,8 +192,10 @@ export async function POST(request: Request) {
 
   const accountMap = resolveAccounts();
   const account = accountMap[accountKey];
-  const anonKeyPrefix = maskPrefix(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
-  const projectRef = getProjectRef(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  const activeKey = getSupabasePublishableKey();
+  const keySource = getSupabaseKeySource();
+  const anonKeyPrefix = maskPrefix(activeKey);
+  const projectRef = getProjectRef(getSupabaseUrl());
 
   const configuredEmails = Object.values(accountMap).map((item) => item.email);
   if (new Set(configuredEmails).size !== configuredEmails.length) {
@@ -223,12 +226,13 @@ export async function POST(request: Request) {
       {
         error: rawMessage,
         message: isLegacyKeyError
-          ? 'Supabase 키가 구형(legacy)입니다. Vercel의 NEXT_PUBLIC_SUPABASE_ANON_KEY 값을 sb_publishable_로 시작하는 키로 교체해주세요.'
+          ? 'Supabase 키가 구형(legacy)입니다. Vercel에서 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY에 sb_publishable_ 키를 넣고, 기존 ANON 키는 제거하세요.'
           : rawMessage,
         errorCode: isLegacyKeyError ? 'SUPABASE_LEGACY_KEY_DISABLED' : 'TEST_LOGIN_FAILED',
         accountEmail: account.email,
         activeAnonKeyPrefix: anonKeyPrefix,
         activeProjectRef: projectRef,
+        activeKeySource: keySource,
       },
       { status: 401 }
     );

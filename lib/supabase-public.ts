@@ -1,9 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
+import { getSupabasePublishableKey, getSupabaseUrl } from '@/lib/supabase-env';
 
 export function createPublicClient() {
   return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    getSupabaseUrl(),
+    getSupabasePublishableKey(),
     {
       auth: {
         autoRefreshToken: false,
