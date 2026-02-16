@@ -18,6 +18,15 @@ type TestAccountConfig = {
 const DEFAULT_PASSWORD = 'testuser1234!';
 
 const normalize = (value: string) => value.trim().toLowerCase();
+const maskPrefix = (value: string | undefined, length = 18) => {
+  if (!value) return '(missing)';
+  return value.slice(0, length);
+};
+const getProjectRef = (url: string | undefined) => {
+  if (!url) return '(missing)';
+  const match = url.match(/^https:\/\/([a-z0-9-]+)\.supabase\.co/i);
+  return match?.[1] || '(invalid-url)';
+};
 
 const resolveAccounts = (): Record<TestAccountKey, TestAccountConfig> => ({
   'test-1': {
@@ -182,6 +191,8 @@ export async function POST(request: Request) {
 
   const accountMap = resolveAccounts();
   const account = accountMap[accountKey];
+  const anonKeyPrefix = maskPrefix(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  const projectRef = getProjectRef(process.env.NEXT_PUBLIC_SUPABASE_URL);
 
   const configuredEmails = Object.values(accountMap).map((item) => item.email);
   if (new Set(configuredEmails).size !== configuredEmails.length) {
@@ -216,6 +227,8 @@ export async function POST(request: Request) {
           : rawMessage,
         errorCode: isLegacyKeyError ? 'SUPABASE_LEGACY_KEY_DISABLED' : 'TEST_LOGIN_FAILED',
         accountEmail: account.email,
+        activeAnonKeyPrefix: anonKeyPrefix,
+        activeProjectRef: projectRef,
       },
       { status: 401 }
     );
