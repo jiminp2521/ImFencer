@@ -17,9 +17,12 @@ type ParticipantRow = {
   } | null;
 };
 
-type UnreadRow = {
+type UnreadCountRow = {
   chat_id: string;
+  unread_count: number;
 };
+
+const CHAT_MESSAGES_LIMIT = 80;
 
 export default async function ChatPage({ searchParams }: ChatPageProps) {
   const resolvedSearchParams = await searchParams;
@@ -65,20 +68,16 @@ export default async function ChatPage({ searchParams }: ChatPageProps) {
       ? resolvedSearchParams.chat
       : chatIds[0] || null;
 
-  if (selectedChatId) {
-    const { error: markReadError } = await supabase
-      .from('messages')
-      .update({ read_at: new Date().toISOString() })
-      .eq('chat_id', selectedChatId)
-      .neq('sender_id', user.id)
-      .is('read_at', null);
+  const markReadPromise = selectedChatId
+    ? supabase
+        .from('messages')
+        .update({ read_at: new Date().toISOString() })
+        .eq('chat_id', selectedChatId)
+        .neq('sender_id', user.id)
+        .is('read_at', null)
+    : Promise.resolve({ error: null });
 
-    if (markReadError) {
-      console.error('Error updating message read state:', markReadError);
-    }
-  }
-
-  const [chatsResult, partnerResult, messagesResult, unreadRowsResult] = await Promise.all([
+  const [chatsResult, partnerResult, messagesResult, markReadResult] = await Promise.all([
     chatIds.length > 0
       ? supabase
           .from('chats')
@@ -109,17 +108,15 @@ export default async function ChatPage({ searchParams }: ChatPageProps) {
             profiles:sender_id (username)
           `)
           .eq('chat_id', selectedChatId)
-          .order('created_at', { ascending: true })
+          .order('created_at', { ascending: false })
+          .limit(CHAT_MESSAGES_LIMIT)
       : Promise.resolve({ data: [], error: null }),
-    chatIds.length > 0
-      ? supabase
-          .from('messages')
-          .select('chat_id')
-          .in('chat_id', chatIds)
-          .neq('sender_id', user.id)
-          .is('read_at', null)
-      : Promise.resolve({ data: [], error: null }),
+    markReadPromise,
   ]);
+
+  if (markReadResult.error) {
+    console.error('Error updating message read state:', markReadResult.error);
+  }
 
   if (chatsResult.error) {
     console.error('Error fetching chats:', chatsResult.error);
@@ -130,9 +127,6 @@ export default async function ChatPage({ searchParams }: ChatPageProps) {
   if (messagesResult.error) {
     console.error('Error fetching messages:', messagesResult.error);
   }
-  if (unreadRowsResult.error) {
-    console.error('Error fetching unread counts:', unreadRowsResult.error);
-  }
 
   const partnerMap = new Map<string, string>();
   for (const participant of (partnerResult.data || []) as unknown as ParticipantRow[]) {
@@ -141,11 +135,39 @@ export default async function ChatPage({ searchParams }: ChatPageProps) {
   }
 
   const chats = chatsResult.data || [];
-  const messages = messagesResult.data || [];
+  const messages = [...(messagesResult.data || [])].reverse();
   const unreadCountMap = new Map<string, number>();
+  const reachedMessageLimit = messages.length >= CHAT_MESSAGES_LIMIT;
+  if (chatIds.length > 0) {
+    const unreadCountRpcResult = await supabase.rpc('get_chat_unread_counts', {
+      p_user_id: user.id,
+      p_chat_ids: chatIds,
+    });
 
-  for (const row of (unreadRowsResult.data || []) as unknown as UnreadRow[]) {
-    unreadCountMap.set(row.chat_id, (unreadCountMap.get(row.chat_id) || 0) + 1);
+    if (!unreadCountRpcResult.error) {
+      for (const row of (unreadCountRpcResult.data || []) as unknown as UnreadCountRow[]) {
+        unreadCountMap.set(row.chat_id, Number(row.unread_count || 0));
+      }
+    } else {
+      console.error('RPC unread count failed, fallback to row counting:', unreadCountRpcResult.error);
+    }
+  }
+
+  if (chatIds.length > 0 && unreadCountMap.size === 0) {
+    const unreadRowsResult = await supabase
+      .from('messages')
+      .select('chat_id')
+      .in('chat_id', chatIds)
+      .neq('sender_id', user.id)
+      .is('read_at', null);
+
+    if (unreadRowsResult.error) {
+      console.error('Error fetching unread counts:', unreadRowsResult.error);
+    } else {
+      for (const row of (unreadRowsResult.data || []) as unknown as { chat_id: string }[]) {
+        unreadCountMap.set(row.chat_id, (unreadCountMap.get(row.chat_id) || 0) + 1);
+      }
+    }
   }
 
   return (
@@ -164,6 +186,7 @@ export default async function ChatPage({ searchParams }: ChatPageProps) {
                 <Link
                   key={chat.id}
                   href={`/chat?chat=${chat.id}`}
+                  prefetch={false}
                   className={`block border-b border-white/10 px-4 py-3 transition-colors ${
                     isActive ? 'bg-blue-500/10' : 'hover:bg-white/5'
                   }`}
@@ -199,6 +222,11 @@ export default async function ChatPage({ searchParams }: ChatPageProps) {
                   </p>
                 </div>
                 <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
+                  {reachedMessageLimit ? (
+                    <p className="text-center text-[11px] text-gray-500">
+                      최근 {CHAT_MESSAGES_LIMIT}개 메시지만 표시됩니다.
+                    </p>
+                  ) : null}
                   {messages.length > 0 ? (
                     messages.map((message) => {
                       const profile = Array.isArray(message.profiles) ? message.profiles[0] : message.profiles;

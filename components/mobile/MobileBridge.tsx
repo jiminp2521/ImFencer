@@ -3,9 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Capacitor } from '@capacitor/core';
-import { App as CapacitorApp } from '@capacitor/app';
-import { Browser } from '@capacitor/browser';
-import { PushNotifications, type ActionPerformed } from '@capacitor/push-notifications';
+import type { ActionPerformed } from '@capacitor/push-notifications';
 
 const APP_SCHEME = (process.env.NEXT_PUBLIC_APP_SCHEME || 'imfencer').toLowerCase();
 
@@ -111,7 +109,7 @@ export function MobileBridge() {
       }
     };
 
-    const handleAuthCode = async (code: string, next: string) => {
+    const handleAuthCode = async (code: string, next: string, closeBrowser: () => Promise<void>) => {
       try {
         const response = await fetch('/api/auth/exchange-code', {
           method: 'POST',
@@ -140,11 +138,17 @@ export function MobileBridge() {
         console.error('Failed to handle auth callback:', error);
         router.replace('/auth/auth-code-error');
       } finally {
-        await Browser.close().catch(() => undefined);
+        await closeBrowser().catch(() => undefined);
       }
     };
 
     const setup = async () => {
+      const [{ App: CapacitorApp }, { Browser }, { PushNotifications }] = await Promise.all([
+        import('@capacitor/app'),
+        import('@capacitor/browser'),
+        import('@capacitor/push-notifications'),
+      ]);
+
       const pushPermission = await PushNotifications.requestPermissions();
       if (pushPermission.receive === 'granted') {
         await PushNotifications.register();
@@ -177,7 +181,7 @@ export function MobileBridge() {
           if (!parsed) return;
 
           if (parsed.kind === 'auth') {
-            void handleAuthCode(parsed.code, parsed.next);
+            void handleAuthCode(parsed.code, parsed.next, () => Browser.close());
             return;
           }
 

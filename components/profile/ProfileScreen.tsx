@@ -27,6 +27,7 @@ type ProfileRow = {
   avatar_url: string | null;
   user_type: string | null;
   club_id: string | null;
+  fencing_clubs: { name: string } | { name: string }[] | null;
 };
 
 type PostRow = {
@@ -55,7 +56,7 @@ export async function ProfileScreen({
   const [profileResult, postsCountResult, likeCountResult, awardsCountResult, postsResult] = await Promise.all([
     supabase
       .from('profiles')
-      .select('username, weapon_type, tier, avatar_url, user_type, club_id')
+      .select('username, weapon_type, tier, avatar_url, user_type, club_id, fencing_clubs:club_id (name)')
       .eq('id', profileUserId)
       .maybeSingle(),
     supabase
@@ -99,22 +100,11 @@ export async function ProfileScreen({
     notFound();
   }
 
-  const clubResult = profile.club_id
-    ? await supabase
-        .from('fencing_clubs')
-        .select('name')
-        .eq('id', profile.club_id)
-        .maybeSingle()
-    : { data: null, error: null };
-
-  if (clubResult.error && clubResult.error.code !== '42P01') {
-    console.error('Error fetching club:', clubResult.error);
-  }
-
   const displayName = profile.username || 'Fencer';
   const tierLabel = profile.tier || 'Bronze';
   const weaponLabel = profile.weapon_type ? weaponMap[profile.weapon_type] || profile.weapon_type : null;
-  const clubName = clubResult.data?.name || null;
+  const profileClub = Array.isArray(profile.fencing_clubs) ? profile.fencing_clubs[0] : profile.fencing_clubs;
+  const clubName = profileClub?.name || null;
 
   const bioParts = [weaponLabel, profile.user_type || null, clubName].filter(Boolean);
   const bio = bioParts.length > 0 ? bioParts.join(' • ') : '프로필 정보가 없습니다.';
@@ -233,4 +223,3 @@ export async function ProfileScreen({
     </div>
   );
 }
-

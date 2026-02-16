@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Home, Sword, ShoppingBag, MessageCircle, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -37,14 +37,22 @@ const tabs = [
 export function BottomNav() {
     const pathname = usePathname();
     const router = useRouter();
+    const prefetchedRef = useRef(false);
     const hideNavPrefixes = ['/login', '/signup', '/write', '/auth', '/fencing/lessons/write', '/payments'];
     const shouldHideNav = hideNavPrefixes.some((prefix) => pathname.startsWith(prefix));
 
     useEffect(() => {
-        if (shouldHideNav) return;
-        tabs.forEach((tab) => {
-            router.prefetch(tab.href);
-        });
+        if (shouldHideNav || prefetchedRef.current) return;
+
+        const prefetchTabs = () => {
+            tabs.forEach((tab) => {
+                router.prefetch(tab.href);
+            });
+            prefetchedRef.current = true;
+        };
+
+        const timeoutId = setTimeout(prefetchTabs, 300);
+        return () => clearTimeout(timeoutId);
     }, [router, shouldHideNav]);
 
     if (shouldHideNav) {
@@ -65,7 +73,6 @@ export function BottomNav() {
                         <Link
                             key={tab.name}
                             href={tab.href}
-                            prefetch
                             className={cn(
                                 'flex flex-col items-center justify-center gap-1 transition-colors duration-200',
                                 isActive ? 'text-blue-500' : 'text-gray-500 hover:text-gray-300'

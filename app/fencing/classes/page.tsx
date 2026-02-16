@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 import { createClient } from '@/lib/supabase-server';
 import { Badge } from '@/components/ui/badge';
-import { ClassReservationButton } from '@/components/fencing/ClassReservationButton';
+import { ClassPaymentButton } from '@/components/fencing/ClassPaymentButton';
 import { StartChatButton } from '@/components/chat/StartChatButton';
 
 type ClassesPageProps = {
@@ -43,7 +43,11 @@ type ClubClassRow = {
 
 type ReservationRow = {
   class_id: string;
+  status: 'requested' | 'confirmed' | 'cancelled';
+  payment_status: 'pending' | 'paid' | 'failed' | 'cancelled';
 };
+
+const CLASS_LIST_LIMIT = 60;
 
 const kindFilters = [
   { label: '전체', value: 'all' },
@@ -98,35 +102,35 @@ const detectKind = (item: ClubClassRow) => {
 export default async function FencingClassesPage({ searchParams }: ClassesPageProps) {
   const resolvedSearchParams = await searchParams;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
   const selectedKind = kindFilters.some((filter) => filter.value === resolvedSearchParams.kind)
     ? resolvedSearchParams.kind!
     : 'all';
 
-  const classesResult = await supabase
-    .from('fencing_club_classes')
-    .select(`
-      id,
-      club_id,
-      coach_id,
-      title,
-      description,
-      weapon_type,
-      level,
-      lesson_type,
-      start_at,
-      end_at,
-      capacity,
-      price,
-      status,
-      fencing_clubs:club_id (id, owner_id, name, city, address),
-      profiles:coach_id (username)
-    `)
-    .order('start_at', { ascending: true })
-    .limit(120);
+  const [userResult, classesResult] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase
+      .from('fencing_club_classes')
+      .select(`
+        id,
+        club_id,
+        coach_id,
+        title,
+        description,
+        weapon_type,
+        level,
+        lesson_type,
+        start_at,
+        end_at,
+        capacity,
+        price,
+        status,
+        fencing_clubs:club_id (id, owner_id, name, city, address),
+        profiles:coach_id (username)
+      `)
+      .order('start_at', { ascending: true })
+      .limit(CLASS_LIST_LIMIT),
+  ]);
+  const user = userResult.data.user;
 
   if (classesResult.error) {
     console.error('Error fetching fencing classes:', classesResult.error);
@@ -141,7 +145,7 @@ export default async function FencingClassesPage({ searchParams }: ClassesPagePr
     user && classIds.length > 0
       ? await supabase
           .from('fencing_class_reservations')
-          .select('class_id')
+          .select('class_id, status, payment_status')
           .eq('user_id', user.id)
           .in('class_id', classIds)
       : { data: [], error: null };
@@ -151,7 +155,9 @@ export default async function FencingClassesPage({ searchParams }: ClassesPagePr
   }
 
   const myReservedClassIds = new Set(
-    ((myReservationsResult.data || []) as ReservationRow[]).map((row) => row.class_id)
+    ((myReservationsResult.data || []) as ReservationRow[])
+      .filter((row) => row.status !== 'cancelled' && row.payment_status !== 'failed' && row.payment_status !== 'cancelled')
+      .map((row) => row.class_id)
   );
 
   const schemaMissing = classesResult.error?.code === '42P01';
@@ -254,7 +260,7 @@ export default async function FencingClassesPage({ searchParams }: ClassesPagePr
                 {classItem.description ? <p className="text-xs text-gray-300">{classItem.description}</p> : null}
 
                 <div className="flex gap-2">
-                  <ClassReservationButton
+                  <ClassPaymentButton
                     classId={classItem.id}
                     classTitle={classItem.title}
                     initialReserved={myReservedClassIds.has(classItem.id)}

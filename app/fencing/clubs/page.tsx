@@ -26,6 +26,8 @@ type ClassCountRow = {
   club_id: string;
 };
 
+const CLUB_LIST_LIMIT = 60;
+
 export default async function FencingClubsPage({ searchParams }: ClubsPageProps) {
   const resolvedSearchParams = await searchParams;
   const supabase = await createClient();
@@ -38,7 +40,7 @@ export default async function FencingClubsPage({ searchParams }: ClubsPageProps)
     .from('fencing_clubs')
     .select('id, owner_id, name, city, address, phone, description')
     .order('created_at', { ascending: false })
-    .limit(120);
+    .limit(CLUB_LIST_LIMIT);
 
   if (queryText) {
     const escaped = queryText.replace(/[%_]/g, '');
@@ -47,9 +49,19 @@ export default async function FencingClubsPage({ searchParams }: ClubsPageProps)
     );
   }
 
-  const [clubsResult, classCountResult, myProfileResult] = await Promise.all([
-    clubsQuery,
-    supabase.from('fencing_club_classes').select('club_id'),
+  const clubsResult = await clubsQuery;
+
+  const clubs = (clubsResult.data || []) as ClubRow[];
+  const clubIds = clubs.map((club) => club.id);
+
+  const [classCountResult, myProfileResult] = await Promise.all([
+    clubIds.length > 0
+      ? supabase
+          .from('fencing_club_classes')
+          .select('club_id')
+          .in('club_id', clubIds)
+          .eq('status', 'open')
+      : Promise.resolve({ data: [], error: null }),
     user
       ? supabase.from('profiles').select('club_id').eq('id', user.id).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
@@ -65,7 +77,6 @@ export default async function FencingClubsPage({ searchParams }: ClubsPageProps)
     console.error('Error fetching my profile club:', myProfileResult.error);
   }
 
-  const clubs = (clubsResult.data || []) as ClubRow[];
   const classCountRows = (classCountResult.data || []) as ClassCountRow[];
   const myClubId = myProfileResult.data?.club_id || null;
 
