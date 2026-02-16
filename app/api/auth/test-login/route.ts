@@ -82,6 +82,53 @@ const upsertTestProfile = async ({
   username: string;
 }) => {
   const nowIso = new Date().toISOString();
+  const upsertWithUserClient = async () => {
+    try {
+      await ensureProfileRow(userClient, userId);
+    } catch (error) {
+      return {
+        ok: false,
+        reason: error instanceof Error ? error.message : 'Failed to ensure profile row',
+      };
+    }
+
+    const { error } = await userClient
+      .from('profiles')
+      .update({
+        username,
+        updated_at: nowIso,
+      })
+      .eq('id', userId);
+
+    if (error) {
+      return {
+        ok: false,
+        reason: error.message || 'Failed to update test profile via user session',
+      };
+    }
+
+    const { data: profileData, error: profileReadError } = await userClient
+      .from('profiles')
+      .select('username')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (profileReadError) {
+      return {
+        ok: false,
+        reason: profileReadError.message || 'Failed to verify test profile',
+      };
+    }
+
+    if ((profileData?.username || null) !== username) {
+      return {
+        ok: false,
+        reason: `Profile nickname mismatch (expected ${username}, got ${profileData?.username || 'null'})`,
+      };
+    }
+
+    return { ok: true };
+  };
 
   if (adminClient) {
     const { error } = await adminClient.from('profiles').upsert(
@@ -95,11 +142,15 @@ const upsertTestProfile = async ({
       }
     );
 
-    if (error) {
+    if (error && !/legacy api keys are disabled/i.test(error.message || '')) {
       return {
         ok: false,
         reason: error.message || 'Failed to update test profile via admin client',
       };
+    }
+
+    if (error) {
+      return upsertWithUserClient();
     }
 
     const { data: profileData, error: profileReadError } = await adminClient
@@ -125,51 +176,7 @@ const upsertTestProfile = async ({
     return { ok: true };
   }
 
-  try {
-    await ensureProfileRow(userClient, userId);
-  } catch (error) {
-    return {
-      ok: false,
-      reason: error instanceof Error ? error.message : 'Failed to ensure profile row',
-    };
-  }
-
-  const { error } = await userClient
-    .from('profiles')
-    .update({
-      username,
-      updated_at: nowIso,
-    })
-    .eq('id', userId);
-
-  if (error) {
-    return {
-      ok: false,
-      reason: error.message || 'Failed to update test profile via user session',
-    };
-  }
-
-  const { data: profileData, error: profileReadError } = await userClient
-    .from('profiles')
-    .select('username')
-    .eq('id', userId)
-    .maybeSingle();
-
-  if (profileReadError) {
-    return {
-      ok: false,
-      reason: profileReadError.message || 'Failed to verify test profile',
-    };
-  }
-
-  if ((profileData?.username || null) !== username) {
-    return {
-      ok: false,
-      reason: `Profile nickname mismatch (expected ${username}, got ${profileData?.username || 'null'})`,
-    };
-  }
-
-  return { ok: true };
+  return upsertWithUserClient();
 };
 
 export async function POST(request: Request) {
@@ -271,6 +278,7 @@ export async function POST(request: Request) {
         message: '요청한 테스트 계정과 실제 로그인된 계정 이메일이 다릅니다.',
         accountEmail: account.email,
         signedInEmail,
+        apiVersion: TEST_LOGIN_API_VERSION,
       },
       { status: 409 }
     );
@@ -293,6 +301,8 @@ export async function POST(request: Request) {
         userId: data.user.id,
         accountEmail: account.email,
         username: account.username,
+        signedInEmail,
+        apiVersion: TEST_LOGIN_API_VERSION,
       },
       { status: 409 }
     );
