@@ -205,9 +205,16 @@ export async function POST(request: Request) {
   });
 
   if (error) {
+    const rawMessage = error.message || 'Failed to sign in test account';
+    const isLegacyKeyError = /legacy api keys are disabled/i.test(rawMessage);
+
     return NextResponse.json(
       {
-        error: error.message || 'Failed to sign in test account',
+        error: rawMessage,
+        message: isLegacyKeyError
+          ? 'Supabase 키가 구형(legacy)입니다. Vercel의 NEXT_PUBLIC_SUPABASE_ANON_KEY 값을 sb_publishable_로 시작하는 키로 교체해주세요.'
+          : rawMessage,
+        errorCode: isLegacyKeyError ? 'SUPABASE_LEGACY_KEY_DISABLED' : 'TEST_LOGIN_FAILED',
         accountEmail: account.email,
       },
       { status: 401 }
