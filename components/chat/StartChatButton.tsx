@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, MessageCircle } from 'lucide-react';
 import type { VariantProps } from 'class-variance-authority';
@@ -46,6 +46,10 @@ export function StartChatButton({
 }: StartChatButtonProps) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
+
+  useEffect(() => {
+    router.prefetch('/chat');
+  }, [router]);
 
   const handleStartChat = async () => {
     if (pending) return;

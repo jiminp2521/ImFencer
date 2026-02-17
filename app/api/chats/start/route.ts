@@ -266,11 +266,14 @@ export async function POST(request: Request) {
     let createdNewChat = false;
 
     if (!chatId) {
-      const chatStartText = `${contextTitle || '새로운 문의'} 대화가 시작되었습니다.`;
+      const firstMessage =
+        openingMessage ||
+        (contextTitle ? `${contextTitle} 문의드립니다.` : '안녕하세요. 문의드립니다.');
+
       const chatCreateResult = await createChatRecord({
         userClient: supabase,
         adminClient,
-        lastMessage: chatStartText,
+        lastMessage: firstMessage,
       });
 
       if (!chatCreateResult.ok) {
@@ -326,10 +329,6 @@ export async function POST(request: Request) {
         );
       }
 
-      const firstMessage =
-        openingMessage ||
-        (contextTitle ? `${contextTitle} 문의드립니다.` : '안녕하세요. 문의드립니다.');
-
       const firstMessageResult = await supabase.from('messages').insert({
         chat_id: chatId,
         sender_id: user.id,
@@ -349,25 +348,7 @@ export async function POST(request: Request) {
       } else if (firstMessageResult.error) {
         console.error('Error creating first message:', firstMessageResult.error);
       } else {
-        const chatUpdateResult = await supabase
-          .from('chats')
-          .update({ last_message: firstMessage, updated_at: new Date().toISOString() })
-          .eq('id', chatId);
-
-        if (chatUpdateResult.error && adminClient) {
-          const adminChatUpdateResult = await adminClient
-            .from('chats')
-            .update({ last_message: firstMessage, updated_at: new Date().toISOString() })
-            .eq('id', chatId);
-
-          if (adminChatUpdateResult.error) {
-            console.error('Error updating chat preview via admin client:', adminChatUpdateResult.error);
-          }
-        } else if (chatUpdateResult.error) {
-          console.error('Error updating chat preview:', chatUpdateResult.error);
-        }
-
-        await createNotificationAndPush({
+        void createNotificationAndPush({
           userId: targetUserId,
           actorId: user.id,
           type: 'chat',
@@ -375,6 +356,8 @@ export async function POST(request: Request) {
           body: firstMessage,
           link: `/chat?chat=${chatId}`,
           dedupeKey: `chat-start:${chatId}:${targetUserId}`,
+        }).catch((notificationError) => {
+          console.error('Chat start notification failed:', notificationError);
         });
       }
     }

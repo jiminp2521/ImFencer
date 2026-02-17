@@ -56,9 +56,9 @@ const isValidAccountKey = (value: string | undefined): value is TestAccountKey =
 
 const createAdminClient = (): SupabaseClient | null => {
   const url = getSupabaseUrl();
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const serviceRoleKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
 
-  if (!url || !serviceRoleKey) {
+  if (!url || !serviceRoleKey || !serviceRoleKey.startsWith('sb_secret_')) {
     return null;
   }
 
@@ -107,26 +107,6 @@ const upsertTestProfile = async ({
       };
     }
 
-    const { data: profileData, error: profileReadError } = await userClient
-      .from('profiles')
-      .select('username')
-      .eq('id', userId)
-      .maybeSingle();
-
-    if (profileReadError) {
-      return {
-        ok: false,
-        reason: profileReadError.message || 'Failed to verify test profile',
-      };
-    }
-
-    if ((profileData?.username || null) !== username) {
-      return {
-        ok: false,
-        reason: `Profile nickname mismatch (expected ${username}, got ${profileData?.username || 'null'})`,
-      };
-    }
-
     return { ok: true };
   };
 
@@ -151,26 +131,6 @@ const upsertTestProfile = async ({
 
     if (error) {
       return upsertWithUserClient();
-    }
-
-    const { data: profileData, error: profileReadError } = await adminClient
-      .from('profiles')
-      .select('username')
-      .eq('id', userId)
-      .maybeSingle();
-
-    if (profileReadError) {
-      return {
-        ok: false,
-        reason: profileReadError.message || 'Failed to verify test profile',
-      };
-    }
-
-    if ((profileData?.username || null) !== username) {
-      return {
-        ok: false,
-        reason: `Profile nickname mismatch (expected ${username}, got ${profileData?.username || 'null'})`,
-      };
     }
 
     return { ok: true };
@@ -235,8 +195,6 @@ export async function POST(request: Request) {
 
   const supabase = await createClient();
   const adminClient = createAdminClient();
-
-  await supabase.auth.signOut();
 
   const { data, error } = await supabase.auth.signInWithPassword({
     email: account.email,

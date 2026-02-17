@@ -99,23 +99,31 @@ export async function POST(request: Request, { params }: RouteContext) {
       console.error('Error updating chat preview:', chatUpdateResult.error);
     }
 
-    let participantsResult = await supabase
-      .from('chat_participants')
-      .select('user_id')
-      .eq('chat_id', chatId)
-      .neq('user_id', user.id);
-
-    if (participantsResult.error && adminClient) {
-      participantsResult = await adminClient
+    // 참여자 조회/알림 전송은 비동기로 분리하여 메시지 전송 응답을 빠르게 반환한다.
+    void (async () => {
+      let participantsResult = await supabase
         .from('chat_participants')
         .select('user_id')
         .eq('chat_id', chatId)
         .neq('user_id', user.id);
-    }
 
-    if (participantsResult.error) {
-      console.error('Error fetching chat participants for notifications:', participantsResult.error);
-    } else if (participantsResult.data && participantsResult.data.length > 0) {
+      if (participantsResult.error && adminClient) {
+        participantsResult = await adminClient
+          .from('chat_participants')
+          .select('user_id')
+          .eq('chat_id', chatId)
+          .neq('user_id', user.id);
+      }
+
+      if (participantsResult.error) {
+        console.error('Error fetching chat participants for notifications:', participantsResult.error);
+        return;
+      }
+
+      if (!participantsResult.data || participantsResult.data.length === 0) {
+        return;
+      }
+
       await Promise.all(
         participantsResult.data.map(async (participant: { user_id: string }) => {
           await createNotificationAndPush({
@@ -129,7 +137,9 @@ export async function POST(request: Request, { params }: RouteContext) {
           });
         })
       );
-    }
+    })().catch((notificationError) => {
+      console.error('Chat message notification failed:', notificationError);
+    });
 
     return NextResponse.json({ ok: true, id: inserted.id, createdAt: inserted.created_at });
   } catch (error) {

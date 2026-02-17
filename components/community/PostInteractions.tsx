@@ -14,6 +14,7 @@ type PostComment = {
   content: string;
   createdAt: string;
   author: string;
+  pending?: boolean;
 };
 
 type PostInteractionsProps = {
@@ -60,35 +61,29 @@ export function PostInteractions({
   const toggleLike = async () => {
     if (moveToLoginIfNeeded() || !currentUserId || likePending) return;
     setLikePending(true);
+    const previousLiked = liked;
+    const previousLikeCount = likeCount;
+    const nextLiked = !liked;
+
+    setLiked(nextLiked);
+    setLikeCount((prev) => Math.max(0, prev + (nextLiked ? 1 : -1)));
 
     try {
-      if (liked) {
-        const response = await fetch(`/api/posts/${postId}/likes`, {
-          method: 'DELETE',
-        });
-        if (response.status === 401) {
-          alert('로그인이 필요합니다.');
-          router.push(`/login?next=/posts/${postId}`);
-          return;
-        }
-        if (!response.ok) throw new Error('Failed to unlike');
-        setLiked(false);
-        setLikeCount((prev) => Math.max(0, prev - 1));
-      } else {
-        const response = await fetch(`/api/posts/${postId}/likes`, {
-          method: 'POST',
-        });
-        if (response.status === 401) {
-          alert('로그인이 필요합니다.');
-          router.push(`/login?next=/posts/${postId}`);
-          return;
-        }
-        if (!response.ok) throw new Error('Failed to like');
-        setLiked(true);
-        setLikeCount((prev) => prev + 1);
+      const response = await fetch(`/api/posts/${postId}/likes`, {
+        method: nextLiked ? 'POST' : 'DELETE',
+      });
+
+      if (response.status === 401) {
+        alert('로그인이 필요합니다.');
+        router.push(`/login?next=/posts/${postId}`);
+        throw new Error('Unauthorized');
       }
+
+      if (!response.ok) throw new Error('Failed to toggle like');
     } catch (error) {
       console.error('Like toggle failed:', error);
+      setLiked(previousLiked);
+      setLikeCount(previousLikeCount);
       alert('좋아요 처리에 실패했습니다.');
     } finally {
       setLikePending(false);
@@ -98,33 +93,26 @@ export function PostInteractions({
   const toggleBookmark = async () => {
     if (moveToLoginIfNeeded() || !currentUserId || bookmarkPending) return;
     setBookmarkPending(true);
+    const previousBookmarked = bookmarked;
+    const nextBookmarked = !bookmarked;
+
+    setBookmarked(nextBookmarked);
 
     try {
-      if (bookmarked) {
-        const response = await fetch(`/api/posts/${postId}/bookmarks`, {
-          method: 'DELETE',
-        });
-        if (response.status === 401) {
-          alert('로그인이 필요합니다.');
-          router.push(`/login?next=/posts/${postId}`);
-          return;
-        }
-        if (!response.ok) throw new Error('Failed to remove bookmark');
-        setBookmarked(false);
-      } else {
-        const response = await fetch(`/api/posts/${postId}/bookmarks`, {
-          method: 'POST',
-        });
-        if (response.status === 401) {
-          alert('로그인이 필요합니다.');
-          router.push(`/login?next=/posts/${postId}`);
-          return;
-        }
-        if (!response.ok) throw new Error('Failed to bookmark');
-        setBookmarked(true);
+      const response = await fetch(`/api/posts/${postId}/bookmarks`, {
+        method: nextBookmarked ? 'POST' : 'DELETE',
+      });
+
+      if (response.status === 401) {
+        alert('로그인이 필요합니다.');
+        router.push(`/login?next=/posts/${postId}`);
+        throw new Error('Unauthorized');
       }
+
+      if (!response.ok) throw new Error('Failed to toggle bookmark');
     } catch (error) {
       console.error('Bookmark toggle failed:', error);
+      setBookmarked(previousBookmarked);
       alert('북마크 처리에 실패했습니다.');
     } finally {
       setBookmarkPending(false);
@@ -137,6 +125,18 @@ export function PostInteractions({
     const content = commentInput.trim();
     if (!content) return;
     setCommentPending(true);
+    const optimisticId = `temp-${Date.now()}`;
+    const optimisticComment: PostComment = {
+      id: optimisticId,
+      authorId: currentUserId,
+      content,
+      createdAt: new Date().toISOString(),
+      author: '나',
+      pending: true,
+    };
+
+    setComments((prev) => [...prev, optimisticComment]);
+    setCommentInput('');
 
     try {
       const response = await fetch(`/api/posts/${postId}/comments`, {
@@ -150,7 +150,7 @@ export function PostInteractions({
       if (response.status === 401) {
         alert('로그인이 필요합니다.');
         router.push(`/login?next=/posts/${postId}`);
-        return;
+        throw new Error('Unauthorized');
       }
 
       if (!response.ok) {
@@ -169,19 +169,24 @@ export function PostInteractions({
       };
 
       const newComment = body.comment;
-      setComments((prev) => [
-        ...prev,
-        {
-          id: newComment.id,
-          authorId: newComment.authorId,
-          content: newComment.content,
-          createdAt: newComment.createdAt,
-          author: newComment.author || '알 수 없음',
-        },
-      ]);
-      setCommentInput('');
+      setComments((prev) =>
+        prev.map((comment) =>
+          comment.id === optimisticId
+            ? {
+                id: newComment.id,
+                authorId: newComment.authorId,
+                content: newComment.content,
+                createdAt: newComment.createdAt,
+                author: newComment.author || '알 수 없음',
+                pending: false,
+              }
+            : comment
+        )
+      );
     } catch (error) {
       console.error('Comment submit failed:', error);
+      setComments((prev) => prev.filter((comment) => comment.id !== optimisticId));
+      setCommentInput(content);
       alert('댓글 등록에 실패했습니다.');
     } finally {
       setCommentPending(false);
@@ -265,7 +270,13 @@ export function PostInteractions({
       <div className="space-y-3">
         {comments.length > 0 ? (
           comments.map((comment) => (
-            <article key={comment.id} className="rounded-lg border border-white/10 bg-gray-950 px-3 py-2.5">
+            <article
+              key={comment.id}
+              className={cn(
+                'rounded-lg border border-white/10 bg-gray-950 px-3 py-2.5',
+                comment.pending && 'opacity-70'
+              )}
+            >
               <div className="mb-1 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 text-[11px] text-gray-500">
                   <span className="font-medium text-gray-300">{comment.author}</span>
@@ -276,17 +287,20 @@ export function PostInteractions({
                       timeStyle: 'short',
                     })}
                   </span>
+                  {comment.pending ? <span>• 전송중...</span> : null}
                 </div>
-                <StartChatButton
-                  targetUserId={comment.authorId}
-                  contextTitle={postTitle}
-                  openingMessage={`${postTitle} 댓글 관련 문의드립니다.`}
-                  loginNext={`/posts/${postId}`}
-                  label="채팅"
-                  size="xs"
-                  variant="ghost"
-                  className="h-6 px-2 text-[11px] text-gray-400 hover:text-white"
-                />
+                {!comment.pending ? (
+                  <StartChatButton
+                    targetUserId={comment.authorId}
+                    contextTitle={postTitle}
+                    openingMessage={`${postTitle} 댓글 관련 문의드립니다.`}
+                    loginNext={`/posts/${postId}`}
+                    label="채팅"
+                    size="xs"
+                    variant="ghost"
+                    className="h-6 px-2 text-[11px] text-gray-400 hover:text-white"
+                  />
+                ) : null}
               </div>
               <p className="whitespace-pre-wrap text-sm leading-6 text-gray-200">{comment.content}</p>
             </article>

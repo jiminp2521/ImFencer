@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase-server';
 import { ensureProfileRow } from '@/lib/ensure-profile';
+import { createNotificationAndPush } from '@/lib/notifications';
 
 type RouteContext = {
   params: Promise<{
@@ -43,16 +44,6 @@ export async function POST(request: Request, { params }: RouteContext) {
   try {
     await ensureProfileRow(supabase, user.id);
 
-    const { data: postRow, error: postError } = await supabase
-      .from('posts')
-      .select('id, author_id, title')
-      .eq('id', postId)
-      .single();
-
-    if (postError || !postRow) {
-      return NextResponse.json({ error: 'Post not found' }, { status: 404 });
-    }
-
     const { data: inserted, error: insertError } = await supabase
       .from('comments')
       .insert({
@@ -73,6 +64,10 @@ export async function POST(request: Request, { params }: RouteContext) {
       .single();
 
     if (insertError || !inserted) {
+      if (insertError?.code === '23503') {
+        return NextResponse.json({ error: 'Post not found' }, { status: 404 });
+      }
+
       console.error('Error inserting comment:', insertError);
       return NextResponse.json({ error: 'Failed to create comment' }, { status: 500 });
     }
@@ -80,24 +75,33 @@ export async function POST(request: Request, { params }: RouteContext) {
     const profile = Array.isArray(inserted.profiles) ? inserted.profiles[0] : inserted.profiles;
     const authorName = profile?.username || '알 수 없음';
 
-    if (postRow.author_id && postRow.author_id !== user.id) {
-      const notificationTitle = '게시글에 새 댓글이 달렸습니다.';
-      const notificationBody = content.length > 80 ? `${content.slice(0, 80)}...` : content;
+    // Push/알림은 사용자 응답 이후 비동기로 처리해서 댓글 등록 체감을 개선한다.
+    void (async () => {
+      try {
+        const { data: postRow, error: postError } = await supabase
+          .from('posts')
+          .select('author_id, title')
+          .eq('id', postId)
+          .maybeSingle();
 
-      const { error: notificationError } = await supabase.from('notifications').insert({
-        user_id: postRow.author_id,
-        actor_id: user.id,
-        type: 'comment',
-        title: notificationTitle,
-        body: notificationBody,
-        link: `/posts/${postId}`,
-      });
+        if (postError || !postRow?.author_id || postRow.author_id === user.id) {
+          return;
+        }
 
-      if (notificationError) {
-        // Notifications are best-effort; the comment should still succeed.
-        console.error('Error creating comment notification:', notificationError);
+        const notificationBody = content.length > 80 ? `${content.slice(0, 80)}...` : content;
+        await createNotificationAndPush({
+          userId: postRow.author_id,
+          actorId: user.id,
+          type: 'comment',
+          title: '게시글에 새 댓글이 달렸습니다.',
+          body: notificationBody,
+          link: `/posts/${postId}`,
+          dedupeKey: `comment:${inserted.id}:${postRow.author_id}`,
+        });
+      } catch (notificationError) {
+        console.error('Comment notification failed:', notificationError);
       }
-    }
+    })();
 
     return NextResponse.json({
       ok: true,

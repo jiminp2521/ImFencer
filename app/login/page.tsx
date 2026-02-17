@@ -58,20 +58,45 @@ export default function LoginPage() {
   const deletedAccount = searchParams.get('deleted') === '1';
   const nextPath = useMemo(() => sanitizeNext(searchParams.get('next')), [searchParams]);
 
+  const requestTestLogin = async (accountKey: TestAccountKey) => {
+    let lastResponse: Response | null = null;
+
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        const response = await fetch(`/api/auth/test-login-v2?t=${Date.now()}-${attempt}`, {
+          method: 'POST',
+          cache: 'no-store',
+          headers: {
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify({ accountKey }),
+        });
+
+        lastResponse = response;
+        if (response.ok || response.status < 500 || attempt === 1) {
+          return response;
+        }
+      } catch (error) {
+        if (attempt === 1) {
+          throw error;
+        }
+      }
+    }
+
+    return lastResponse;
+  };
+
   const loginWithTestAccount = async (account: TestAccount) => {
     if (pendingAccountKey) return;
 
     setPendingAccountKey(account.key);
 
     try {
-      const testLoginResponse = await fetch(`/api/auth/test-login-v2?t=${Date.now()}`, {
-        method: 'POST',
-        cache: 'no-store',
-        headers: {
-          'content-type': 'application/json',
-        },
-        body: JSON.stringify({ accountKey: account.key }),
-      });
+      const testLoginResponse = await requestTestLogin(account.key);
+      if (!testLoginResponse) {
+        alert('테스트 계정 로그인 요청에 실패했습니다. 잠시 후 다시 시도해주세요.');
+        return;
+      }
 
       const body = (await testLoginResponse
         .json()
@@ -90,7 +115,6 @@ export default function LoginPage() {
       }
 
       router.push(nextPath);
-      router.refresh();
     } finally {
       setPendingAccountKey(null);
     }
