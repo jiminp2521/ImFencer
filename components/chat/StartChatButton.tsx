@@ -54,11 +54,14 @@ export function StartChatButton({
   const handleStartChat = async () => {
     if (pending) return;
     setPending(true);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10_000);
 
     try {
       const response = await fetch('/api/chats/start', {
         method: 'POST',
         cache: 'no-store',
+        signal: controller.signal,
         headers: {
           'content-type': 'application/json',
         },
@@ -96,8 +99,9 @@ export function StartChatButton({
       router.push(`/chat?chat=${body.chatId}`);
     } catch (error) {
       console.error('Error starting chat:', error);
-      alert('채팅 연결에 실패했습니다.');
+      alert('채팅 연결에 실패했습니다. 네트워크 상태를 확인하고 다시 시도해주세요.');
     } finally {
+      clearTimeout(timeoutId);
       setPending(false);
     }
   };

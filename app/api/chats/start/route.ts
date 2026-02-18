@@ -157,6 +157,27 @@ async function upsertParticipant({
     ignoreDuplicates: true,
   });
 
+  if (userUpsertResult.error?.code === '23503') {
+    try {
+      await ensureProfileRow(userClient, userId);
+      const retryUpsertResult = await userClient.from('chat_participants').upsert(payload, {
+        onConflict: 'chat_id,user_id',
+        ignoreDuplicates: true,
+      });
+
+      if (!retryUpsertResult.error) {
+        return {
+          ok: true as const,
+          usedAdmin: false,
+          detail: null,
+          hint: null,
+        };
+      }
+    } catch (retryError) {
+      console.error(`Failed to ensure profile row for participant ${userId}:`, retryError);
+    }
+  }
+
   if (!userUpsertResult.error) {
     return {
       ok: true as const,
@@ -232,8 +253,6 @@ export async function POST(request: Request) {
   }
 
   try {
-    await ensureProfileRow(supabase, user.id);
-
     const participantRowsResult = await supabase
       .from('chat_participants')
       .select('chat_id, user_id')

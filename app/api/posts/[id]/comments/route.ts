@@ -42,9 +42,7 @@ export async function POST(request: Request, { params }: RouteContext) {
   }
 
   try {
-    await ensureProfileRow(supabase, user.id);
-
-    const { data: inserted, error: insertError } = await supabase
+    let insertResult = await supabase
       .from('comments')
       .insert({
         post_id: postId,
@@ -63,6 +61,30 @@ export async function POST(request: Request, { params }: RouteContext) {
       )
       .single();
 
+    if (insertResult.error?.code === '23503') {
+      await ensureProfileRow(supabase, user.id);
+      insertResult = await supabase
+        .from('comments')
+        .insert({
+          post_id: postId,
+          author_id: user.id,
+          parent_id: parentId,
+          content,
+        })
+        .select(
+          `
+          id,
+          author_id,
+          content,
+          created_at,
+          profiles:author_id (username)
+        `
+        )
+        .single();
+    }
+
+    const inserted = insertResult.data;
+    const insertError = insertResult.error;
     if (insertError || !inserted) {
       if (insertError?.code === '23503') {
         return NextResponse.json({ error: 'Post not found' }, { status: 404 });

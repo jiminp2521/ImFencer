@@ -45,8 +45,6 @@ export async function POST(request: Request, { params }: RouteContext) {
   }
 
   try {
-    await ensureProfileRow(supabase, user.id);
-
     let insertResult = await supabase
       .from('messages')
       .insert({
@@ -56,6 +54,19 @@ export async function POST(request: Request, { params }: RouteContext) {
       })
       .select('id, created_at')
       .single();
+
+    if (insertResult.error?.code === '23503') {
+      await ensureProfileRow(supabase, user.id);
+      insertResult = await supabase
+        .from('messages')
+        .insert({
+          chat_id: chatId,
+          sender_id: user.id,
+          content,
+        })
+        .select('id, created_at')
+        .single();
+    }
 
     if ((insertResult.error || !insertResult.data) && adminClient) {
       console.error('Error inserting message with user session, retrying with admin:', insertResult.error);

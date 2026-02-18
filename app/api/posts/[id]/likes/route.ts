@@ -20,17 +20,23 @@ export async function POST(_request: Request, { params }: RouteContext) {
   }
 
   try {
-    await ensureProfileRow(supabase, user.id);
-
-    const { error } = await supabase.from('post_likes').insert({
+    let insertResult = await supabase.from('post_likes').insert({
       post_id: postId,
       user_id: user.id,
     });
 
-    if (error) {
+    if (insertResult.error?.code === '23503') {
+      await ensureProfileRow(supabase, user.id);
+      insertResult = await supabase.from('post_likes').insert({
+        post_id: postId,
+        user_id: user.id,
+      });
+    }
+
+    if (insertResult.error) {
       // Duplicate like is fine (idempotent).
-      if (error.code !== '23505') {
-        console.error('Error liking post:', error);
+      if (insertResult.error.code !== '23505') {
+        console.error('Error liking post:', insertResult.error);
         return NextResponse.json({ error: 'Failed to like post' }, { status: 500 });
       }
     }
@@ -54,8 +60,6 @@ export async function DELETE(_request: Request, { params }: RouteContext) {
   }
 
   try {
-    await ensureProfileRow(supabase, user.id);
-
     const { error } = await supabase
       .from('post_likes')
       .delete()
