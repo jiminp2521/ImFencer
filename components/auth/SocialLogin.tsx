@@ -13,7 +13,6 @@ interface SocialLoginProps {
 type SocialProvider = 'google' | 'kakao' | 'apple';
 
 export function SocialLogin({ mode = 'login' }: SocialLoginProps) {
-    const supabase = createClient();
     const [pendingProvider, setPendingProvider] = useState<SocialProvider | null>(null);
 
     const resolveRedirectTo = (isNative: boolean) => {
@@ -29,6 +28,16 @@ export function SocialLogin({ mode = 'login' }: SocialLoginProps) {
         setPendingProvider(provider);
         const isNative = Capacitor.isNativePlatform();
         const redirectTo = resolveRedirectTo(isNative);
+        let supabase;
+
+        try {
+            supabase = createClient();
+        } catch (error) {
+            console.error('Supabase client init failed:', error);
+            alert('로그인 설정이 올바르지 않습니다. 잠시 후 다시 시도해주세요.');
+            setPendingProvider(null);
+            return;
+        }
 
         const scopes = provider === 'google'
             ? 'openid email profile'

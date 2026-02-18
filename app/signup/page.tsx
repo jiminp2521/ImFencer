@@ -21,7 +21,6 @@ export default function SignUpPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const router = useRouter();
-    const supabase = createClient();
 
     const handleSignUp = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -37,6 +36,16 @@ export default function SignUpPage() {
 
         if (trimmedUsername.length < 3) {
             setError('닉네임은 3자 이상이어야 합니다.');
+            setLoading(false);
+            return;
+        }
+
+        let supabase;
+        try {
+            supabase = createClient();
+        } catch (clientError) {
+            console.error('Supabase client init failed on signup:', clientError);
+            setError('회원가입 설정이 올바르지 않습니다. 잠시 후 다시 시도해주세요.');
             setLoading(false);
             return;
         }
