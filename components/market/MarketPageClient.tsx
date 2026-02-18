@@ -1,11 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { useSWRLite } from '@/lib/swr-lite';
+import { preloadSWRLite, useSWRLite } from '@/lib/swr-lite';
 
 type MarketProfile = {
   username: string | null;
@@ -143,15 +143,30 @@ export function MarketPageClient() {
 
   const { data, error, isLoading, isValidating, mutate } = useSWRLite(marketFeedUrl, fetchMarketFeed, {
     staleTime: 25_000,
+    keepPreviousData: true,
   });
 
   const items = data?.items || [];
   const currentPage = data?.currentPage || requestedPage;
   const hasNextPage = Boolean(data?.hasNextPage);
 
+  useEffect(() => {
+    if (!hasNextPage) return;
+
+    const nextPageParams = new URLSearchParams({
+      status: selectedStatus,
+      weapon: selectedWeapon,
+      q: searchText,
+      page: String(currentPage + 1),
+    });
+
+    const nextFeedUrl = `/api/market/feed?${nextPageParams.toString()}`;
+    preloadSWRLite(nextFeedUrl, fetchMarketFeed, { staleTime: 25_000 });
+  }, [currentPage, hasNextPage, searchText, selectedStatus, selectedWeapon]);
+
   return (
-    <div className="min-h-screen pb-20">
-      <header className="sticky top-0 z-40 bg-black/80 backdrop-blur-md border-b border-white/10 px-4 h-14 flex items-center justify-between">
+    <div className="min-h-screen pb-20 bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.14),_rgba(0,0,0,0.97)_42%)]">
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-gradient-to-b from-black via-black/95 to-black/80 backdrop-blur-xl px-4 h-14 flex items-center justify-between">
         <h1 className="text-lg font-bold text-white">마켓</h1>
         <Button asChild size="sm" className="h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-3 text-xs">
           <Link href="/market/write" prefetch={false}>판매글 등록</Link>
@@ -184,10 +199,10 @@ export function MarketPageClient() {
               key={filter.value}
               href={buildMarketHref(filter.value, selectedWeapon, searchText, 1)}
               prefetch={false}
-              className={`px-3 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition-colors ${
+              className={`px-3 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition-colors border ${
                 selectedStatus === filter.value
-                  ? 'bg-white text-black'
-                  : 'bg-gray-900 text-gray-400 border border-gray-800'
+                  ? 'bg-white text-black border-white'
+                  : 'bg-gray-900/80 text-gray-400 border-gray-800'
               }`}
             >
               {filter.label}
@@ -201,10 +216,10 @@ export function MarketPageClient() {
               key={filter.value}
               href={buildMarketHref(selectedStatus, filter.value, searchText, 1)}
               prefetch={false}
-              className={`px-3 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition-colors ${
+              className={`px-3 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition-colors border ${
                 selectedWeapon === filter.value
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-900 text-gray-400 border border-gray-800'
+                  ? 'bg-blue-600/80 text-white border-blue-500/60'
+                  : 'bg-gray-900/80 text-gray-400 border-gray-800'
               }`}
             >
               {filter.label}
@@ -222,7 +237,7 @@ export function MarketPageClient() {
         ) : null}
       </div>
 
-      <main>
+      <main className="animate-imfencer-fade-up">
         {error ? (
           <div className="px-4 py-10 text-center space-y-3">
             <p className="text-sm text-red-300">마켓 목록을 불러오지 못했습니다.</p>

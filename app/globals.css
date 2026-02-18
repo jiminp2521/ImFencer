@@ -120,9 +120,18 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    -webkit-tap-highlight-color: transparent;
+  }
+  html {
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
   }
   body {
     @apply bg-background text-foreground;
+  }
+  a,
+  button {
+    touch-action: manipulation;
   }
 }
 
@@ -158,4 +167,19 @@ header.sticky {
 
 .native-app .app-bottom-nav {
   padding-bottom: max(var(--safe-area-bottom), 0.5rem);
+}
+
+@keyframes imfencer-fade-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.animate-imfencer-fade-up {
+  animation: imfencer-fade-up 280ms ease-out both;
 }

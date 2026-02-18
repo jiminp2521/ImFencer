@@ -1,12 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { FeedItem } from '@/components/community/FeedItem';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { FloatingActionButton } from '@/components/ui/floating-action-button';
-import { useSWRLite } from '@/lib/swr-lite';
+import { preloadSWRLite, useSWRLite } from '@/lib/swr-lite';
 
 type CommunityScope = 'all' | 'club';
 
@@ -119,6 +119,7 @@ export function HomePageClient() {
 
   const { data, error, isLoading, isValidating, mutate } = useSWRLite(feedUrl, fetchHomeFeed, {
     staleTime: 30_000,
+    keepPreviousData: true,
   });
 
   const posts = data?.posts || [];
@@ -126,9 +127,23 @@ export function HomePageClient() {
   const hasNextPage = Boolean(data?.hasNextPage);
   const canUseClubFeed = data?.canUseClubFeed ?? selectedScope !== 'club';
 
+  useEffect(() => {
+    if (!hasNextPage) return;
+
+    const nextPageParams = new URLSearchParams({
+      scope: selectedScope,
+      category: selectedCategory,
+      sort: selectedSort,
+      page: String(currentPage + 1),
+    });
+
+    const nextFeedUrl = `/api/home/feed?${nextPageParams.toString()}`;
+    preloadSWRLite(nextFeedUrl, fetchHomeFeed, { staleTime: 30_000 });
+  }, [currentPage, hasNextPage, selectedCategory, selectedScope, selectedSort]);
+
   return (
-    <div className="pb-20">
-      <header className="sticky top-0 z-40 bg-black/80 backdrop-blur-md border-b border-white/10 px-4 py-3 flex items-center justify-between h-14">
+    <div className="pb-20 bg-[radial-gradient(circle_at_top,_rgba(37,99,235,0.2),_rgba(0,0,0,0.96)_42%)]">
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-gradient-to-b from-black via-black/95 to-black/80 backdrop-blur-xl px-4 py-3 flex items-center justify-between h-14">
         <div className="relative w-32 h-8">
           <img src="/app-logo.png" alt="ImFencer" className="object-contain w-full h-full object-left" />
         </div>
@@ -137,16 +152,20 @@ export function HomePageClient() {
         </div>
       </header>
 
-      <div className="flex gap-2 px-4 py-3 overflow-x-auto no-scrollbar border-b border-white/5">
+      <div className="px-4 pt-3 pb-2 text-[11px] text-gray-400">
+        빠르게 이동할 수 있도록 탭 데이터가 미리 준비됩니다.
+      </div>
+
+      <div className="flex gap-2 px-4 py-2 overflow-x-auto no-scrollbar border-b border-white/5">
         {scopeFilters.map((filter) => (
           <Link
             key={filter.value}
             href={buildHomeHref(filter.value, selectedCategory, selectedSort, 1)}
             prefetch={false}
-            className={`px-3 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition-colors ${
+            className={`px-3 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition-colors border ${
               selectedScope === filter.value
-                ? 'bg-emerald-600 text-white'
-                : 'bg-gray-900 text-gray-400 border border-gray-800'
+                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                : 'bg-gray-900/80 text-gray-400 border-gray-800'
             }`}
           >
             {filter.label}
@@ -154,16 +173,16 @@ export function HomePageClient() {
         ))}
       </div>
 
-      <div className="flex gap-2 px-4 py-3 overflow-x-auto no-scrollbar border-b border-white/5">
+      <div className="flex gap-2 px-4 py-2 overflow-x-auto no-scrollbar border-b border-white/5">
         {categoryFilters.map((filter) => (
           <Link
             key={filter.value}
             href={buildHomeHref(selectedScope, filter.value, selectedSort, 1)}
             prefetch={false}
-            className={`px-3 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition-colors ${
+            className={`px-3 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition-colors border ${
               selectedCategory === filter.value
-                ? 'bg-white text-black'
-                : 'bg-gray-900 text-gray-400 border border-gray-800'
+                ? 'bg-white text-black border-white'
+                : 'bg-gray-900/80 text-gray-400 border-gray-800'
             }`}
           >
             {filter.label}
@@ -171,16 +190,16 @@ export function HomePageClient() {
         ))}
       </div>
 
-      <div className="flex gap-2 px-4 py-3 overflow-x-auto no-scrollbar border-b border-white/5">
+      <div className="flex gap-2 px-4 py-2 overflow-x-auto no-scrollbar border-b border-white/5">
         {sortFilters.map((filter) => (
           <Link
             key={filter.value}
             href={buildHomeHref(selectedScope, selectedCategory, filter.value, 1)}
             prefetch={false}
-            className={`px-3 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition-colors ${
+            className={`px-3 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition-colors border ${
               selectedSort === filter.value
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-900 text-gray-400 border border-gray-800'
+                ? 'bg-blue-600/80 text-white border-blue-500/60'
+                : 'bg-gray-900/80 text-gray-400 border-gray-800'
             }`}
           >
             {filter.label}
@@ -188,7 +207,7 @@ export function HomePageClient() {
         ))}
       </div>
 
-      <main>
+      <main className="animate-imfencer-fade-up">
         {error ? (
           <div className="px-4 py-10 text-center space-y-3">
             <p className="text-sm text-red-300">피드를 불러오지 못했습니다.</p>

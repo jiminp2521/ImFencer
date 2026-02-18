@@ -29,8 +29,8 @@ const menuItems = [
 
 export default async function FencingPage() {
   return (
-    <div className="min-h-screen pb-20">
-      <header className="sticky top-0 z-40 bg-black/80 backdrop-blur-md border-b border-white/10 px-4 h-14 flex items-center justify-between">
+    <div className="min-h-screen pb-20 bg-[radial-gradient(circle_at_top,_rgba(37,99,235,0.14),_rgba(0,0,0,0.97)_40%)]">
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-gradient-to-b from-black via-black/95 to-black/80 backdrop-blur-xl px-4 h-14 flex items-center justify-between">
         <h1 className="text-lg font-bold text-white">펜싱</h1>
         <Button asChild size="sm" className="h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-3 text-xs">
           <Link href="/fencing/lessons/write">레슨 등록</Link>
@@ -39,7 +39,7 @@ export default async function FencingPage() {
 
       <main className="px-4 py-5 space-y-4">
         <section className="space-y-2">
-          <h2 className="text-base font-semibold text-white">메뉴 선택</h2>
+          <h2 className="text-base font-semibold text-white tracking-tight">메뉴 선택</h2>
           <p className="text-xs text-gray-500">
             한 화면에 모두 노출하지 않고, 기능별 전용 화면으로 분리했습니다.
           </p>
@@ -50,7 +50,7 @@ export default async function FencingPage() {
             <Link
               key={item.href}
               href={item.href}
-              className="block rounded-xl border border-white/10 bg-gray-950 px-4 py-3 hover:bg-gray-900/70 transition-colors"
+              className="block rounded-2xl border border-white/10 bg-gradient-to-br from-[#041027] to-[#020713] px-4 py-3 hover:border-blue-500/40 hover:bg-[#06122a] transition-colors"
             >
               <div className="flex items-center justify-between gap-3">
                 <div className="space-y-1">

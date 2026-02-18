@@ -12,6 +12,7 @@ type CacheEntry<T> = {
 type SWROptions = {
   staleTime?: number;
   revalidateOnMount?: boolean;
+  keepPreviousData?: boolean;
 };
 
 const cache = new Map<string, CacheEntry<unknown>>();
@@ -101,7 +102,9 @@ export function useSWRLite<T>(
 ) {
   const staleTime = options.staleTime ?? 0;
   const revalidateOnMount = options.revalidateOnMount ?? true;
+  const keepPreviousData = options.keepPreviousData ?? false;
   const [, setTick] = useState(0);
+  const [previousData, setPreviousData] = useState<T | undefined>(undefined);
 
   useEffect(() => {
     if (!key) return;
@@ -145,15 +148,29 @@ export function useSWRLite<T>(
 
   const entry = key ? getEntry<T>(key) : undefined;
 
+  useEffect(() => {
+    if (entry?.data !== undefined) {
+      setPreviousData(entry.data);
+    }
+  }, [entry?.data]);
+
+  useEffect(() => {
+    if (!key) {
+      setPreviousData(undefined);
+    }
+  }, [key]);
+
   const mutate = useCallback(async () => {
     if (!key) return undefined;
     return runFetch(key, fetcher);
   }, [fetcher, key]);
 
+  const resolvedData = entry?.data ?? (keepPreviousData ? previousData : undefined);
+
   return {
-    data: entry?.data,
+    data: resolvedData,
     error: entry?.error,
-    isLoading: Boolean(key) && !entry?.data && !entry?.error,
+    isLoading: Boolean(key) && !resolvedData && !entry?.error,
     isValidating: Boolean(entry?.promise),
     mutate,
   };

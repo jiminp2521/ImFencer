@@ -69,15 +69,16 @@ export function ChatPageClient() {
 
   const { data, error, isLoading, isValidating, mutate } = useSWRLite(overviewUrl, fetchChatOverview, {
     staleTime: 8_000,
+    keepPreviousData: true,
   });
 
   if (error) {
     return (
-      <div className="min-h-screen pb-20">
-        <header className="sticky top-0 z-40 bg-black/80 backdrop-blur-md border-b border-white/10 px-4 h-14 flex items-center">
+      <div className="min-h-screen pb-20 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.14),_rgba(0,0,0,0.96)_38%)]">
+        <header className="sticky top-0 z-40 border-b border-white/10 bg-gradient-to-b from-black via-black/95 to-black/80 backdrop-blur-xl px-4 h-14 flex items-center">
           <h1 className="text-lg font-bold text-white">채팅</h1>
         </header>
-        <main className="px-4 py-16 text-center space-y-4">
+        <main className="px-4 py-16 text-center space-y-4 animate-imfencer-fade-up">
           <p className="text-sm text-red-300">채팅 데이터를 불러오지 못했습니다.</p>
           <button
             type="button"
@@ -95,8 +96,8 @@ export function ChatPageClient() {
 
   if (!data || isLoading) {
     return (
-      <div className="min-h-screen pb-20">
-        <header className="sticky top-0 z-40 bg-black/80 backdrop-blur-md border-b border-white/10 px-4 h-14 flex items-center">
+      <div className="min-h-screen pb-20 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.14),_rgba(0,0,0,0.96)_38%)]">
+        <header className="sticky top-0 z-40 border-b border-white/10 bg-gradient-to-b from-black via-black/95 to-black/80 backdrop-blur-xl px-4 h-14 flex items-center">
           <h1 className="text-lg font-bold text-white">채팅</h1>
         </header>
         <main className="px-4 py-6 space-y-3 animate-pulse">
@@ -113,11 +114,11 @@ export function ChatPageClient() {
 
   if (!data.authenticated) {
     return (
-      <div className="min-h-screen pb-20">
-        <header className="sticky top-0 z-40 bg-black/80 backdrop-blur-md border-b border-white/10 px-4 h-14 flex items-center">
+      <div className="min-h-screen pb-20 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.14),_rgba(0,0,0,0.96)_38%)]">
+        <header className="sticky top-0 z-40 border-b border-white/10 bg-gradient-to-b from-black via-black/95 to-black/80 backdrop-blur-xl px-4 h-14 flex items-center">
           <h1 className="text-lg font-bold text-white">채팅</h1>
         </header>
-        <main className="px-4 py-16 text-center space-y-4">
+        <main className="px-4 py-16 text-center space-y-4 animate-imfencer-fade-up">
           <p className="text-lg font-semibold text-white">로그인 후 채팅을 이용할 수 있습니다.</p>
           <p className="text-sm text-gray-400">커뮤니티/마켓/펜싱 메뉴에서 문의를 보내면 채팅방이 생성됩니다.</p>
           <Link
@@ -139,7 +140,7 @@ export function ChatPageClient() {
   const messages = data.messages || [];
 
   return (
-    <div className="min-h-screen pb-20">
+    <div className="min-h-screen pb-20 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.14),_rgba(0,0,0,0.96)_38%)]">
       {chatIds.length > 0 ? (
         <ChatRealtimeSync
           chatIds={chatIds}
@@ -148,13 +149,13 @@ export function ChatPageClient() {
           }}
         />
       ) : null}
-      <header className="sticky top-0 z-40 bg-black/80 backdrop-blur-md border-b border-white/10 px-4 h-14 flex items-center justify-between">
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-gradient-to-b from-black via-black/95 to-black/80 backdrop-blur-xl px-4 h-14 flex items-center justify-between">
         <h1 className="text-lg font-bold text-white">채팅</h1>
         {isValidating ? <span className="text-[11px] text-gray-500">갱신중</span> : null}
       </header>
 
       {chats.length > 0 ? (
-        <main className="grid grid-cols-1 md:grid-cols-[280px_1fr]">
+        <main className="grid grid-cols-1 md:grid-cols-[280px_1fr] animate-imfencer-fade-up">
           <aside className="border-b md:border-b-0 md:border-r border-white/10">
             {chats.map((chat) => {
               const isActive = chat.id === selectedChatId;
@@ -259,7 +260,7 @@ export function ChatPageClient() {
           </section>
         </main>
       ) : (
-        <main className="px-4 py-16 text-center space-y-3">
+        <main className="px-4 py-16 text-center space-y-3 animate-imfencer-fade-up">
           <p className="text-lg font-semibold text-white">아직 채팅방이 없습니다.</p>
           <p className="text-sm text-gray-400">커뮤니티, 마켓, 펜싱 메뉴의 채팅 버튼으로 대화를 시작할 수 있습니다.</p>
           <Link

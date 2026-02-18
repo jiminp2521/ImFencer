@@ -5,7 +5,7 @@ import { withApiTiming } from '@/lib/api-timing';
 
 export const dynamic = 'force-dynamic';
 
-const CHAT_MESSAGES_LIMIT = 80;
+const CHAT_MESSAGES_LIMIT = 50;
 
 type ParticipantRow = {
   chat_id: string;
