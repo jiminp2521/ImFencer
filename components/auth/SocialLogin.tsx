@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { createClient } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Capacitor } from '@capacitor/core';
@@ -9,41 +10,77 @@ interface SocialLoginProps {
     mode?: 'login' | 'signup';
 }
 
+type SocialProvider = 'google' | 'kakao' | 'apple';
+
 export function SocialLogin({ mode = 'login' }: SocialLoginProps) {
     const supabase = createClient();
+    const [pendingProvider, setPendingProvider] = useState<SocialProvider | null>(null);
 
-    const handleSocialLogin = async (provider: 'google' | 'kakao' | 'apple') => {
+    const resolveRedirectTo = (isNative: boolean) => {
+        const appScheme = (process.env.NEXT_PUBLIC_APP_SCHEME || 'imfencer').trim().toLowerCase();
+        const appUrl = (process.env.NEXT_PUBLIC_APP_URL || window.location.origin).replace(/\/+$/, '');
+
+        return isNative ? `${appScheme}://auth/callback` : `${appUrl}/auth/callback`;
+    };
+
+    const handleSocialLogin = async (provider: SocialProvider) => {
+        if (pendingProvider) return;
+
+        setPendingProvider(provider);
         const isNative = Capacitor.isNativePlatform();
-        const appScheme = process.env.NEXT_PUBLIC_APP_SCHEME || 'imfencer';
-        const redirectTo = isNative
-            ? `${appScheme}://auth/callback`
-            : `${window.location.origin}/auth/callback`;
+        const redirectTo = resolveRedirectTo(isNative);
 
-        const { data, error } = await supabase.auth.signInWithOAuth({
-            provider,
-            options: {
-                redirectTo,
-                skipBrowserRedirect: isNative,
-            },
-        });
+        const scopes = provider === 'google'
+            ? 'openid email profile'
+            : provider === 'kakao'
+                ? 'profile_nickname profile_image account_email'
+                : provider === 'apple'
+                    ? 'email name'
+                    : undefined;
 
-        if (error) {
-            console.error('Social login error:', error);
-            alert('로그인에 실패했습니다. 다시 시도해주세요.');
-            return;
-        }
+        const queryParams: Record<string, string> | undefined = provider === 'google'
+            ? { prompt: 'select_account', access_type: 'offline' }
+            : provider === 'kakao'
+                ? { prompt: 'login' }
+                : undefined;
 
-        if (isNative && data?.url) {
+        try {
+            const { data, error } = await supabase.auth.signInWithOAuth({
+                provider,
+                options: {
+                    redirectTo,
+                    skipBrowserRedirect: isNative,
+                    scopes,
+                    queryParams,
+                },
+            });
+
+            if (error) {
+                console.error('Social login error:', error);
+                alert(`로그인에 실패했습니다.\n${error.message || '다시 시도해주세요.'}`);
+                return;
+            }
+
+            if (!isNative) return;
+
+            if (!data?.url) {
+                alert('로그인 URL 생성에 실패했습니다. 잠시 후 다시 시도해주세요.');
+                return;
+            }
+
             await Browser.open({ url: data.url }).catch((browserError) => {
                 console.error('Failed to open browser for oauth:', browserError);
                 alert('브라우저 열기에 실패했습니다.');
             });
+        } finally {
+            setPendingProvider(null);
         }
     };
 
     const isSignup = mode === 'signup';
     const actionText = isSignup ? '회원가입하기' : '로그인하기';
     const appleText = isSignup ? 'Apple로 등록' : 'Apple로 로그인';
+    const pendingText = pendingProvider ? '로그인 중...' : null;
 
     return (
         <div className="flex flex-col gap-3 w-full">
@@ -53,13 +90,14 @@ export function SocialLogin({ mode = 'login' }: SocialLoginProps) {
                 variant="ghost"
                 onClick={() => handleSocialLogin('kakao')}
                 className="w-full bg-[#FEE500] hover:bg-[#FEE500]/90 text-black h-12 relative rounded-xl"
+                disabled={Boolean(pendingProvider)}
             >
                 <div className="absolute left-5 w-5 h-5 flex items-center justify-center">
                     <svg className="w-full h-full" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M12 3C5.373 3 0 7.03 0 12c0 3.197 2.23 6.026 5.617 7.643-.207.755-.748 2.733-.855 3.132-.132.486.177.478.373.348.156-.104 2.47-1.68 3.442-2.35 1.08.307 2.23.473 3.423.473 6.627 0 12-4.03 12-9s-5.373-9-12-9z" />
                     </svg>
                 </div>
-                <span className="text-[15px] font-semibold">카카오로 {actionText}</span>
+                <span className="text-[15px] font-semibold">{pendingText || `카카오로 ${actionText}`}</span>
             </Button>
 
             {/* Google Login */}
@@ -68,6 +106,7 @@ export function SocialLogin({ mode = 'login' }: SocialLoginProps) {
                 variant="ghost"
                 onClick={() => handleSocialLogin('google')}
                 className="w-full bg-white hover:bg-gray-50 text-black h-12 relative rounded-xl border border-gray-200"
+                disabled={Boolean(pendingProvider)}
             >
                 <div className="absolute left-5 w-5 h-5 flex items-center justify-center">
                     <svg className="w-full h-full" viewBox="0 0 24 24">
@@ -89,7 +128,7 @@ export function SocialLogin({ mode = 'login' }: SocialLoginProps) {
                         />
                     </svg>
                 </div>
-                <span className="text-[15px] font-semibold">Google로 {actionText}</span>
+                <span className="text-[15px] font-semibold">{pendingText || `Google로 ${actionText}`}</span>
             </Button>
 
             {/* Apple Login - Black Style */}
@@ -98,11 +137,12 @@ export function SocialLogin({ mode = 'login' }: SocialLoginProps) {
                 variant="ghost"
                 onClick={() => handleSocialLogin('apple')}
                 className="w-full bg-black hover:bg-gray-900 text-white h-12 relative rounded-xl"
+                disabled={Boolean(pendingProvider)}
             >
                 <div className="absolute left-5 w-5 h-5 flex items-center justify-center">
                     <img src="/apple-logo.png" alt="Apple" className="w-full h-full object-contain invert" />
                 </div>
-                <span className="text-[15px] font-semibold">{appleText}</span>
+                <span className="text-[15px] font-semibold">{pendingText || appleText}</span>
             </Button>
         </div>
     );

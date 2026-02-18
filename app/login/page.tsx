@@ -56,6 +56,7 @@ export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const deletedAccount = searchParams.get('deleted') === '1';
+  const oauthError = searchParams.get('oauthError');
   const nextPath = useMemo(() => sanitizeNext(searchParams.get('next')), [searchParams]);
 
   const requestTestLogin = async (accountKey: TestAccountKey) => {
@@ -133,6 +134,12 @@ export default function LoginPage() {
         {deletedAccount ? (
           <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
             계정이 삭제되었습니다. 다시 이용하려면 새로 가입해주세요.
+          </div>
+        ) : null}
+
+        {oauthError ? (
+          <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-200">
+            소셜 로그인에 실패했습니다: {oauthError}
           </div>
         ) : null}
 
