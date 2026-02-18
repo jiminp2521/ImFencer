@@ -62,6 +62,23 @@ export function BottomNav() {
     const prefetchedRef = useRef(false);
     const hideNavPrefixes = ['/login', '/signup', '/write', '/auth', '/fencing/lessons/write', '/payments'];
     const shouldHideNav = hideNavPrefixes.some((prefix) => pathname.startsWith(prefix));
+    const resolveMyTabHref = async () => {
+        try {
+            const response = await fetch('/api/me', {
+                credentials: 'include',
+                cache: 'no-store',
+            });
+
+            if (response.ok) {
+                router.push('/profile');
+                return;
+            }
+        } catch {
+            // Fall through to login
+        }
+
+        router.push('/login?next=%2Fprofile');
+    };
 
     const warmTabData = (href: string) => {
         const tab = tabs.find((item) => item.href === href);
@@ -106,6 +123,11 @@ export function BottomNav() {
                         <Link
                             key={tab.name}
                             href={tab.href}
+                            onClick={(event) => {
+                                if (tab.href !== '/profile') return;
+                                event.preventDefault();
+                                void resolveMyTabHref();
+                            }}
                             onMouseEnter={() => {
                                 router.prefetch(tab.href);
                                 warmTabData(tab.href);

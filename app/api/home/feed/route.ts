@@ -6,11 +6,11 @@ import { withApiTiming } from '@/lib/api-timing';
 export const dynamic = 'force-dynamic';
 
 const FEED_PAGE_SIZE = 20;
-const VALID_SCOPES = new Set(['all', 'club']);
+const VALID_SCOPES = new Set(['all', 'weapon', 'club']);
 const VALID_CATEGORIES = new Set(['All', 'Free', 'Question', 'Info']);
 const VALID_SORTS = new Set(['latest', 'popular']);
 
-type CommunityScope = 'all' | 'club';
+type CommunityScope = 'all' | 'weapon' | 'club';
 
 type FeedPost = {
   id: string;
@@ -29,6 +29,7 @@ type FeedPost = {
 type FallbackProfile = {
   username: string | null;
   club_id?: string | null;
+  weapon_type?: string | null;
 };
 
 type FallbackPostRow = {
@@ -76,14 +77,16 @@ export async function GET(request: NextRequest) {
     const selectedSort = VALID_SORTS.has(searchParams.get('sort') || '')
       ? (searchParams.get('sort') as string)
       : 'latest';
+    const searchText = (searchParams.get('q') || '').trim();
     const currentPage = parsePositivePage(searchParams.get('page'));
 
     const supabase = createPublicClient();
 
     let userId: string | null = null;
     let myClubId: string | null = null;
+    let myWeaponType: string | null = null;
 
-    if (selectedScope === 'club') {
+    if (selectedScope !== 'all') {
       const serverSupabase = await createServerClient();
       const {
         data: { user },
@@ -93,7 +96,7 @@ export async function GET(request: NextRequest) {
         userId = user.id;
         const myProfileResult = await serverSupabase
           .from('profiles')
-          .select('club_id')
+          .select('club_id, weapon_type')
           .eq('id', user.id)
           .maybeSingle();
 
@@ -101,17 +104,19 @@ export async function GET(request: NextRequest) {
           console.error('Error fetching my profile club:', myProfileResult.error);
         } else {
           myClubId = myProfileResult.data?.club_id || null;
+          myWeaponType = myProfileResult.data?.weapon_type || null;
         }
       }
     }
 
     const canUseClubFeed = Boolean(userId && myClubId);
+    const canUseWeaponFeed = Boolean(userId && myWeaponType);
     const offset = (currentPage - 1) * FEED_PAGE_SIZE;
     const categoryArg = selectedCategory === 'All' ? null : selectedCategory;
 
     let posts: FeedPost[] = [];
 
-    const shouldUseRpc = selectedScope === 'all';
+    const shouldUseRpc = selectedScope === 'all' && !searchText;
     const rpcResult = shouldUseRpc
       ? await supabase.rpc('get_feed_posts', {
           p_category: categoryArg,
@@ -135,6 +140,8 @@ export async function GET(request: NextRequest) {
       }));
     } else if (selectedScope === 'club' && !canUseClubFeed) {
       posts = [];
+    } else if (selectedScope === 'weapon' && !canUseWeaponFeed) {
+      posts = [];
     } else {
       let fallbackQuery = supabase
         .from('posts')
@@ -146,7 +153,7 @@ export async function GET(request: NextRequest) {
           image_url,
           tags,
           created_at,
-          profiles:author_id${selectedScope === 'club' ? '!inner' : ''} (username, club_id)
+          profiles:author_id${selectedScope === 'all' ? '' : '!inner'} (username, club_id, weapon_type)
         `)
         .order('created_at', { ascending: false })
         .range(offset, offset + FEED_PAGE_SIZE);
@@ -157,6 +164,13 @@ export async function GET(request: NextRequest) {
 
       if (selectedScope === 'club' && myClubId) {
         fallbackQuery = fallbackQuery.eq('profiles.club_id', myClubId);
+      }
+      if (selectedScope === 'weapon' && myWeaponType) {
+        fallbackQuery = fallbackQuery.eq('profiles.weapon_type', myWeaponType);
+      }
+      if (searchText) {
+        const escaped = searchText.replace(/[%_]/g, '');
+        fallbackQuery = fallbackQuery.or(`title.ilike.%${escaped}%,content.ilike.%${escaped}%`);
       }
 
       const { data: fallbackRows, error: fallbackError } = await fallbackQuery;
@@ -237,8 +251,10 @@ export async function GET(request: NextRequest) {
       selectedScope,
       selectedCategory,
       selectedSort,
+      searchText,
       currentPage,
       canUseClubFeed,
+      canUseWeaponFeed,
       hasNextPage,
       posts: visiblePosts,
     });
