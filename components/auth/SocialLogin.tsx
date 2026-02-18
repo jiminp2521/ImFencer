@@ -32,17 +32,13 @@ export function SocialLogin({ mode = 'login' }: SocialLoginProps) {
 
         const scopes = provider === 'google'
             ? 'openid email profile'
-            : provider === 'kakao'
-                ? 'profile_nickname profile_image account_email'
-                : provider === 'apple'
-                    ? 'email name'
-                    : undefined;
+            : provider === 'apple'
+                ? 'email name'
+                : undefined;
 
         const queryParams: Record<string, string> | undefined = provider === 'google'
             ? { prompt: 'select_account', access_type: 'offline' }
-            : provider === 'kakao'
-                ? { prompt: 'login' }
-                : undefined;
+            : undefined;
 
         try {
             const { data, error } = await supabase.auth.signInWithOAuth({
