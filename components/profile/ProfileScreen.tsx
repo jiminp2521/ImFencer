@@ -43,6 +43,7 @@ type ProfileScreenProps = {
   viewerUserId: string | null;
   showOwnerMenu?: boolean;
   backHref?: string | null;
+  headerVariant?: 'default' | 'app';
 };
 
 export async function ProfileScreen({
@@ -50,6 +51,7 @@ export async function ProfileScreen({
   viewerUserId,
   showOwnerMenu = false,
   backHref = null,
+  headerVariant = 'default',
 }: ProfileScreenProps) {
   const supabase = await createClient();
   const isOwner = Boolean(viewerUserId && viewerUserId === profileUserId);
@@ -137,25 +139,36 @@ export async function ProfileScreen({
 
   return (
     <div className="pb-20">
-      <header className="sticky top-0 z-40 bg-black/80 backdrop-blur-md border-b border-white/10 px-4 h-14 flex items-center justify-between">
-        <div className="flex items-center min-w-0 gap-2">
-          {backHref ? (
-            <Link href={backHref} className="text-gray-400 hover:text-white transition-colors">
-              <ChevronLeft className="w-6 h-6" />
-            </Link>
-          ) : (
-            <div className="w-6" />
-          )}
-          <h1 className="text-base font-semibold text-white truncate">{displayName}</h1>
-        </div>
+      {headerVariant === 'app' ? (
+        <header className="sticky top-0 z-40 border-b border-white/10 bg-gradient-to-b from-black via-black/95 to-black/80 backdrop-blur-xl px-4 h-14 flex items-center justify-between">
+          <div className="relative w-32 h-8">
+            <img src="/app-logo.png" alt="ImFencer" className="object-contain w-full h-full object-left" />
+          </div>
+          <div className="flex items-center gap-2">
+            {isOwner && showOwnerMenu ? <ProfileMenuButton userId={profileUserId} username={displayName} /> : null}
+          </div>
+        </header>
+      ) : (
+        <header className="sticky top-0 z-40 bg-black/80 backdrop-blur-md border-b border-white/10 px-4 h-14 flex items-center justify-between">
+          <div className="flex items-center min-w-0 gap-2">
+            {backHref ? (
+              <Link href={backHref} className="text-gray-400 hover:text-white transition-colors">
+                <ChevronLeft className="w-6 h-6" />
+              </Link>
+            ) : (
+              <div className="w-6" />
+            )}
+            <h1 className="text-base font-semibold text-white truncate">{displayName}</h1>
+          </div>
 
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="border-gray-700 bg-transparent text-gray-300">
-            {tierLabel} Tier
-          </Badge>
-          {isOwner && showOwnerMenu ? <ProfileMenuButton userId={profileUserId} username={displayName} /> : null}
-        </div>
-      </header>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="border-gray-700 bg-transparent text-gray-300">
+              {tierLabel} Tier
+            </Badge>
+            {isOwner && showOwnerMenu ? <ProfileMenuButton userId={profileUserId} username={displayName} /> : null}
+          </div>
+        </header>
+      )}
 
       <main className="p-4 space-y-6">
         <section className="flex items-center gap-4">

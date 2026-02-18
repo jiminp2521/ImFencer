@@ -71,6 +71,7 @@ const buildHomeHref = (scope: CommunityScope, category: string, sort: string, pa
   if (page > 1) {
     params.set('page', String(page));
   }
+
   if (q.trim()) {
     params.set('q', q.trim());
   }
@@ -114,6 +115,8 @@ export function HomePageClient() {
   const requestedPage = parsePositivePage(searchParams.get('page'));
   const [isSearchOpen, setIsSearchOpen] = useState(Boolean(searchText));
 
+  const selectedSortLabel = sortFilters.find((filter) => filter.value === selectedSort)?.label || '최신순';
+
   const feedUrl = useMemo(() => {
     const params = new URLSearchParams({
       scope: selectedScope,
@@ -136,7 +139,6 @@ export function HomePageClient() {
   const hasNextPage = Boolean(data?.hasNextPage);
   const canUseClubFeed = data?.canUseClubFeed ?? selectedScope !== 'club';
   const canUseWeaponFeed = data?.canUseWeaponFeed ?? selectedScope !== 'weapon';
-  const selectedScopeLabel = scopeFilters.find((filter) => filter.value === selectedScope)?.label || '전체';
 
   useEffect(() => {
     if (searchText) {
@@ -162,44 +164,43 @@ export function HomePageClient() {
   return (
     <div className="pb-20 bg-[radial-gradient(circle_at_top,_rgba(37,99,235,0.2),_rgba(0,0,0,0.96)_42%)]">
       <header className="sticky top-0 z-40 border-b border-white/10 bg-gradient-to-b from-black via-black/95 to-black/80 backdrop-blur-xl px-4 py-3 flex items-center justify-between h-14">
-        <div className="relative">
-          <details className="group">
-            <summary className="list-none flex items-center gap-1.5 text-2xl font-bold tracking-tight text-white cursor-pointer [&::-webkit-details-marker]:hidden">
-              {selectedScopeLabel}
-              <ChevronDown className="h-5 w-5 text-gray-300 transition-transform group-open:rotate-180" />
-            </summary>
-            <div className="absolute left-0 top-[calc(100%+8px)] z-50 min-w-[140px] rounded-xl border border-white/10 bg-black/95 p-1.5 shadow-2xl">
-              {scopeFilters.map((filter) => (
-                <Link
-                  key={filter.value}
-                  href={buildHomeHref(filter.value, selectedCategory, selectedSort, 1, searchText)}
-                  prefetch={false}
-                  className={`block rounded-lg px-3 py-2 text-sm transition-colors ${
-                    selectedScope === filter.value
-                      ? 'bg-blue-500/20 text-blue-300'
-                      : 'text-gray-300 hover:bg-white/5'
-                  }`}
-                >
-                  {filter.label}
-                </Link>
-              ))}
-            </div>
-          </details>
+        <div className="relative w-32 h-8">
+          <img src="/app-logo.png" alt="ImFencer" className="object-contain w-full h-full object-left" />
         </div>
         <div className="flex items-center gap-2">
+          <NotificationBell />
           <button
             type="button"
             onClick={() => {
               setIsSearchOpen((prev) => !prev);
             }}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-gray-950/80 text-gray-300 hover:bg-gray-900 hover:text-white"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-gray-900 text-gray-300 hover:text-white hover:bg-gray-800 transition-colors"
             aria-label="게시글 검색"
           >
             <Search className="h-4 w-4" />
           </button>
-          <NotificationBell />
         </div>
       </header>
+
+      <div className="flex items-center gap-6 px-4 py-3 overflow-x-auto no-scrollbar border-b border-white/5">
+        {scopeFilters.map((filter) => {
+          const active = selectedScope === filter.value;
+          return (
+            <Link
+              key={filter.value}
+              href={buildHomeHref(filter.value, selectedCategory, selectedSort, 1, searchText)}
+              prefetch={false}
+              className={`whitespace-nowrap pb-1 text-[19px] tracking-tight transition-colors border-b-2 ${
+                active
+                  ? 'text-white border-white font-semibold'
+                  : 'text-gray-400 border-transparent hover:text-gray-200'
+              }`}
+            >
+              {filter.label}
+            </Link>
+          );
+        })}
+      </div>
 
       {isSearchOpen ? (
         <form action="/" className="border-b border-white/5 px-4 py-2 flex items-center gap-2">
@@ -232,37 +233,48 @@ export function HomePageClient() {
       ) : null}
 
       <div className="flex items-center gap-2 px-4 py-2 overflow-x-auto no-scrollbar border-b border-white/5">
-        {categoryFilters.map((filter) => (
-          <Link
-            key={filter.value}
-            href={buildHomeHref(selectedScope, filter.value, selectedSort, 1, searchText)}
-            prefetch={false}
-            className={`px-3 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition-colors border ${
-              selectedCategory === filter.value
-                ? 'bg-white text-black border-white'
-                : 'bg-gray-900/80 text-gray-400 border-gray-800'
-            }`}
-          >
-            {filter.label}
-          </Link>
-        ))}
+        <details className="group relative shrink-0">
+          <summary className="list-none flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition-colors border bg-gray-900/80 text-white border-gray-700 cursor-pointer [&::-webkit-details-marker]:hidden">
+            {selectedSortLabel}
+            <ChevronDown className="h-3.5 w-3.5 text-gray-300 transition-transform group-open:rotate-180" />
+          </summary>
+          <div className="absolute left-0 top-[calc(100%+8px)] z-50 min-w-[120px] rounded-xl border border-white/10 bg-black/95 p-1.5 shadow-2xl">
+            {sortFilters.map((filter) => (
+              <Link
+                key={filter.value}
+                href={buildHomeHref(selectedScope, selectedCategory, filter.value, 1, searchText)}
+                prefetch={false}
+                className={`block rounded-lg px-3 py-2 text-sm transition-colors ${
+                  selectedSort === filter.value
+                    ? 'bg-blue-500/20 text-blue-300'
+                    : 'text-gray-300 hover:bg-white/5'
+                }`}
+              >
+                {filter.label}
+              </Link>
+            ))}
+          </div>
+        </details>
 
-        <div className="h-4 w-px shrink-0 bg-white/15 mx-0.5" />
+        {categoryFilters.map((filter) => {
+          const active = selectedCategory === filter.value;
+          const nextCategory = active ? 'All' : filter.value;
 
-        {sortFilters.map((filter) => (
-          <Link
-            key={filter.value}
-            href={buildHomeHref(selectedScope, selectedCategory, filter.value, 1, searchText)}
-            prefetch={false}
-            className={`px-3 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition-colors border ${
-              selectedSort === filter.value
-                ? 'bg-blue-600/80 text-white border-blue-500/60'
-                : 'bg-gray-900/80 text-gray-400 border-gray-800'
-            }`}
-          >
-            {filter.label}
-          </Link>
-        ))}
+          return (
+            <Link
+              key={filter.value}
+              href={buildHomeHref(selectedScope, nextCategory, selectedSort, 1, searchText)}
+              prefetch={false}
+              className={`px-3 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition-colors border ${
+                active
+                  ? 'bg-white text-black border-white'
+                  : 'bg-gray-900/80 text-gray-400 border-gray-800'
+              }`}
+            >
+              {filter.label}
+            </Link>
+          );
+        })}
       </div>
 
       <main className="animate-imfencer-fade-up">

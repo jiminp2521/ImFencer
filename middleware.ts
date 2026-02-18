@@ -78,12 +78,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
     matcher: [
-        '/write/:path*',
-        '/profile/:path*',
-        '/market/write/:path*',
-        '/fencing/lessons/write/:path*',
-        '/activity/:path*',
-        '/notifications/:path*',
-        '/admin/:path*',
+        '/((?!api|_next/static|_next/image|favicon.ico|login|signup|auth|\\.well-known|.*\\..*).*)',
     ],
 }

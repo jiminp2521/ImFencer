@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import { Bell, Bookmark, CalendarClock, Copy, FileText, Menu, LogOut } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Bell, Bookmark, CalendarClock, Copy, FileText, Loader2, Settings, LogOut, UserX, Shield } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -18,7 +19,9 @@ const safeOrigin = () => {
 };
 
 export function ProfileMenuButton({ userId, username }: ProfileMenuButtonProps) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [deletePending, setDeletePending] = useState(false);
   const publicProfileHref = useMemo(() => `/users/${userId}`, [userId]);
 
   const copyProfileLink = async () => {
@@ -34,6 +37,43 @@ export function ProfileMenuButton({ userId, username }: ProfileMenuButtonProps) 
 
   const close = () => setOpen(false);
 
+  const deleteAccount = async () => {
+    if (deletePending) return;
+    const confirmed = confirm('계정을 탈퇴하면 되돌릴 수 없습니다. 정말 탈퇴하시겠습니까?');
+    if (!confirmed) return;
+
+    const reason = prompt('탈퇴 사유를 남기시겠습니까? (선택)');
+
+    setDeletePending(true);
+    try {
+      const response = await fetch('/api/auth/delete-account', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          reason: reason?.trim() || null,
+        }),
+      });
+
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        alert(body?.error || '계정 삭제에 실패했습니다.');
+        return;
+      }
+
+      alert('계정이 삭제되었습니다.');
+      close();
+      router.replace('/login?deleted=1');
+      router.refresh();
+    } catch (error) {
+      console.error('Delete account failed:', error);
+      alert('계정 삭제에 실패했습니다.');
+    } finally {
+      setDeletePending(false);
+    }
+  };
+
   const itemClass =
     'flex items-center justify-between rounded-lg border border-white/10 bg-gray-950 px-3 py-3 text-sm text-gray-200 hover:bg-gray-900/70 transition-colors';
 
@@ -41,8 +81,8 @@ export function ProfileMenuButton({ userId, username }: ProfileMenuButtonProps) 
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
         <Button type="button" variant="ghost" size="icon" className="text-gray-200 hover:bg-white/5">
-          <Menu className="h-5 w-5" />
-          <span className="sr-only">메뉴</span>
+          <Settings className="h-5 w-5" />
+          <span className="sr-only">설정</span>
         </Button>
       </SheetTrigger>
 
@@ -85,6 +125,14 @@ export function ProfileMenuButton({ userId, username }: ProfileMenuButtonProps) 
             <span className="text-xs text-gray-500">보기</span>
           </Link>
 
+          <Link href="/admin/platform-settings" onClick={close} className={itemClass}>
+            <span className="flex items-center gap-2">
+              <Shield className="h-4 w-4 text-cyan-300" />
+              플랫폼 수수료
+            </span>
+            <span className="text-xs text-gray-500">관리</span>
+          </Link>
+
           <button type="button" onClick={copyProfileLink} className={cn(itemClass, 'w-full')}>
             <span className="flex items-center gap-2">
               <Copy className="h-4 w-4 text-gray-300" />
@@ -95,6 +143,15 @@ export function ProfileMenuButton({ userId, username }: ProfileMenuButtonProps) 
         </div>
 
         <div className="mt-auto px-4 py-4 border-t border-white/10">
+          <button
+            type="button"
+            onClick={deleteAccount}
+            disabled={deletePending}
+            className="mb-2 flex w-full items-center justify-center gap-2 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-3 text-sm font-medium text-red-200 hover:bg-red-500/15 transition-colors disabled:opacity-50"
+          >
+            {deletePending ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserX className="h-4 w-4" />}
+            계정 삭제
+          </button>
           <Link
             href="/api/auth/logout"
             onClick={close}
@@ -108,4 +165,3 @@ export function ProfileMenuButton({ userId, username }: ProfileMenuButtonProps) 
     </Sheet>
   );
 }
-

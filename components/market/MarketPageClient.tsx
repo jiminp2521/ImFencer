@@ -1,10 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo } from 'react';
+import { Search } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { preloadSWRLite, useSWRLite } from '@/lib/swr-lite';
 
 type MarketProfile = {
@@ -129,6 +131,7 @@ export function MarketPageClient() {
     : 'All';
   const searchText = (searchParams.get('q') || '').trim();
   const requestedPage = parsePositivePage(searchParams.get('page'));
+  const [isSearchOpen, setIsSearchOpen] = useState(Boolean(searchText));
 
   const marketFeedUrl = useMemo(() => {
     const params = new URLSearchParams({
@@ -151,6 +154,12 @@ export function MarketPageClient() {
   const hasNextPage = Boolean(data?.hasNextPage);
 
   useEffect(() => {
+    if (searchText) {
+      setIsSearchOpen(true);
+    }
+  }, [searchText]);
+
+  useEffect(() => {
     if (!hasNextPage) return;
 
     const nextPageParams = new URLSearchParams({
@@ -167,31 +176,52 @@ export function MarketPageClient() {
   return (
     <div className="min-h-screen pb-20 bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.14),_rgba(0,0,0,0.97)_42%)]">
       <header className="sticky top-0 z-40 border-b border-white/10 bg-gradient-to-b from-black via-black/95 to-black/80 backdrop-blur-xl px-4 h-14 flex items-center justify-between">
-        <h1 className="text-lg font-bold text-white">마켓</h1>
-        <Button asChild size="sm" className="h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-3 text-xs">
-          <Link href="/market/write" prefetch={false}>판매글 등록</Link>
-        </Button>
+        <div className="relative w-32 h-8">
+          <img src="/app-logo.png" alt="ImFencer" className="object-contain w-full h-full object-left" />
+        </div>
+        <div className="flex items-center gap-2">
+          <NotificationBell />
+          <button
+            type="button"
+            onClick={() => {
+              setIsSearchOpen((prev) => !prev);
+            }}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-gray-900 text-gray-300 hover:text-white hover:bg-gray-800 transition-colors"
+            aria-label="마켓 검색"
+          >
+            <Search className="h-4 w-4" />
+          </button>
+        </div>
       </header>
 
       <div className="space-y-2 border-b border-white/5 px-4 py-3">
-        <form action="/market" className="flex gap-2">
-          {selectedStatus !== 'All' ? <input type="hidden" name="status" value={selectedStatus} /> : null}
-          {selectedWeapon !== 'All' ? <input type="hidden" name="weapon" value={selectedWeapon} /> : null}
-          <input
-            type="text"
-            name="q"
-            defaultValue={searchText}
-            placeholder="상품명/브랜드 검색"
-            className="h-9 w-full rounded-md border border-gray-800 bg-gray-950 px-3 text-sm text-gray-100 placeholder:text-gray-500 outline-none focus:border-blue-500/60"
-          />
-          <Button
-            type="submit"
-            variant="outline"
-            className="h-9 border-gray-700 bg-gray-950 text-gray-200 hover:bg-gray-900"
-          >
-            검색
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs text-gray-500">장비/용품 거래</p>
+          <Button asChild size="sm" className="h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-3 text-xs">
+            <Link href="/market/write" prefetch={false}>판매글 등록</Link>
           </Button>
-        </form>
+        </div>
+
+        {isSearchOpen ? (
+          <form action="/market" className="flex gap-2">
+            {selectedStatus !== 'All' ? <input type="hidden" name="status" value={selectedStatus} /> : null}
+            {selectedWeapon !== 'All' ? <input type="hidden" name="weapon" value={selectedWeapon} /> : null}
+            <input
+              type="text"
+              name="q"
+              defaultValue={searchText}
+              placeholder="상품명/브랜드 검색"
+              className="h-9 w-full rounded-md border border-gray-800 bg-gray-950 px-3 text-sm text-gray-100 placeholder:text-gray-500 outline-none focus:border-blue-500/60"
+            />
+            <Button
+              type="submit"
+              variant="outline"
+              className="h-9 border-gray-700 bg-gray-950 text-gray-200 hover:bg-gray-900"
+            >
+              검색
+            </Button>
+          </form>
+        ) : null}
 
         <div className="flex gap-2 overflow-x-auto no-scrollbar">
           {statusFilters.map((filter) => (

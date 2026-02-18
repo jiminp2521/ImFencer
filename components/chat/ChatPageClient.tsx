@@ -1,10 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { Search } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ChatComposer } from '@/components/chat/ChatComposer';
 import { ChatRealtimeSync } from '@/components/chat/ChatRealtimeSync';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { useSWRLite } from '@/lib/swr-lite';
 
 type ChatEntry = {
@@ -61,6 +63,8 @@ const fetchChatOverview = async (url: string): Promise<ChatOverviewResponse> => 
 export function ChatPageClient() {
   const searchParams = useSearchParams();
   const requestedChatId = searchParams.get('chat');
+  const chatSearchQuery = (searchParams.get('q') || '').trim();
+  const [isSearchOpen, setIsSearchOpen] = useState(Boolean(chatSearchQuery));
 
   const overviewUrl = useMemo(() => {
     if (!requestedChatId) return '/api/chat/overview?open=1';
@@ -72,11 +76,32 @@ export function ChatPageClient() {
     keepPreviousData: true,
   });
 
+  useEffect(() => {
+    if (chatSearchQuery) {
+      setIsSearchOpen(true);
+    }
+  }, [chatSearchQuery]);
+
   if (error) {
     return (
       <div className="min-h-screen pb-20 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.14),_rgba(0,0,0,0.96)_38%)]">
-        <header className="sticky top-0 z-40 border-b border-white/10 bg-gradient-to-b from-black via-black/95 to-black/80 backdrop-blur-xl px-4 h-14 flex items-center">
-          <h1 className="text-lg font-bold text-white">채팅</h1>
+        <header className="sticky top-0 z-40 border-b border-white/10 bg-gradient-to-b from-black via-black/95 to-black/80 backdrop-blur-xl px-4 h-14 flex items-center justify-between">
+          <div className="relative w-32 h-8">
+            <img src="/app-logo.png" alt="ImFencer" className="object-contain w-full h-full object-left" />
+          </div>
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+            <button
+              type="button"
+              onClick={() => {
+                setIsSearchOpen((prev) => !prev);
+              }}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-gray-900 text-gray-300 hover:text-white hover:bg-gray-800 transition-colors"
+              aria-label="채팅 검색"
+            >
+              <Search className="h-4 w-4" />
+            </button>
+          </div>
         </header>
         <main className="px-4 py-16 text-center space-y-4 animate-imfencer-fade-up">
           <p className="text-sm text-red-300">채팅 데이터를 불러오지 못했습니다.</p>
@@ -97,8 +122,23 @@ export function ChatPageClient() {
   if (!data || isLoading) {
     return (
       <div className="min-h-screen pb-20 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.14),_rgba(0,0,0,0.96)_38%)]">
-        <header className="sticky top-0 z-40 border-b border-white/10 bg-gradient-to-b from-black via-black/95 to-black/80 backdrop-blur-xl px-4 h-14 flex items-center">
-          <h1 className="text-lg font-bold text-white">채팅</h1>
+        <header className="sticky top-0 z-40 border-b border-white/10 bg-gradient-to-b from-black via-black/95 to-black/80 backdrop-blur-xl px-4 h-14 flex items-center justify-between">
+          <div className="relative w-32 h-8">
+            <img src="/app-logo.png" alt="ImFencer" className="object-contain w-full h-full object-left" />
+          </div>
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+            <button
+              type="button"
+              onClick={() => {
+                setIsSearchOpen((prev) => !prev);
+              }}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-gray-900 text-gray-300 hover:text-white hover:bg-gray-800 transition-colors"
+              aria-label="채팅 검색"
+            >
+              <Search className="h-4 w-4" />
+            </button>
+          </div>
         </header>
         <main className="px-4 py-6 space-y-3 animate-pulse">
           {Array.from({ length: 8 }).map((_, index) => (
@@ -115,8 +155,23 @@ export function ChatPageClient() {
   if (!data.authenticated) {
     return (
       <div className="min-h-screen pb-20 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.14),_rgba(0,0,0,0.96)_38%)]">
-        <header className="sticky top-0 z-40 border-b border-white/10 bg-gradient-to-b from-black via-black/95 to-black/80 backdrop-blur-xl px-4 h-14 flex items-center">
-          <h1 className="text-lg font-bold text-white">채팅</h1>
+        <header className="sticky top-0 z-40 border-b border-white/10 bg-gradient-to-b from-black via-black/95 to-black/80 backdrop-blur-xl px-4 h-14 flex items-center justify-between">
+          <div className="relative w-32 h-8">
+            <img src="/app-logo.png" alt="ImFencer" className="object-contain w-full h-full object-left" />
+          </div>
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+            <button
+              type="button"
+              onClick={() => {
+                setIsSearchOpen((prev) => !prev);
+              }}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-gray-900 text-gray-300 hover:text-white hover:bg-gray-800 transition-colors"
+              aria-label="채팅 검색"
+            >
+              <Search className="h-4 w-4" />
+            </button>
+          </div>
         </header>
         <main className="px-4 py-16 text-center space-y-4 animate-imfencer-fade-up">
           <p className="text-lg font-semibold text-white">로그인 후 채팅을 이용할 수 있습니다.</p>
@@ -138,6 +193,23 @@ export function ChatPageClient() {
   const unreadCountMap = data.unreadCountMap || {};
   const partnerMap = data.partnerMap || {};
   const messages = data.messages || [];
+  const normalizedQuery = chatSearchQuery.toLowerCase();
+
+  const filteredChats = chatSearchQuery
+    ? chats.filter((chat) => {
+        const partner = (partnerMap[chat.id] || '').toLowerCase();
+        const preview = (chat.last_message || '').toLowerCase();
+        return partner.includes(normalizedQuery) || preview.includes(normalizedQuery);
+      })
+    : chats;
+
+  const filteredMessages = chatSearchQuery
+    ? messages.filter((message) => {
+        const profile = Array.isArray(message.profiles) ? message.profiles[0] : message.profiles;
+        const senderName = (profile?.username || '').toLowerCase();
+        return senderName.includes(normalizedQuery) || message.content.toLowerCase().includes(normalizedQuery);
+      })
+    : messages;
 
   return (
     <div className="min-h-screen pb-20 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.14),_rgba(0,0,0,0.96)_38%)]">
@@ -150,19 +222,61 @@ export function ChatPageClient() {
         />
       ) : null}
       <header className="sticky top-0 z-40 border-b border-white/10 bg-gradient-to-b from-black via-black/95 to-black/80 backdrop-blur-xl px-4 h-14 flex items-center justify-between">
-        <h1 className="text-lg font-bold text-white">채팅</h1>
-        {isValidating ? <span className="text-[11px] text-gray-500">갱신중</span> : null}
+        <div className="relative w-32 h-8">
+          <img src="/app-logo.png" alt="ImFencer" className="object-contain w-full h-full object-left" />
+        </div>
+        <div className="flex items-center gap-2">
+          <NotificationBell />
+          <button
+            type="button"
+            onClick={() => {
+              setIsSearchOpen((prev) => !prev);
+            }}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-gray-900 text-gray-300 hover:text-white hover:bg-gray-800 transition-colors"
+            aria-label="채팅 검색"
+          >
+            <Search className="h-4 w-4" />
+          </button>
+        </div>
       </header>
+
+      {isSearchOpen ? (
+        <form action="/chat" className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
+          {requestedChatId ? <input type="hidden" name="chat" value={requestedChatId} /> : null}
+          <input
+            type="text"
+            name="q"
+            defaultValue={chatSearchQuery}
+            placeholder="상대 닉네임 또는 대화 내용 검색"
+            className="h-9 w-full rounded-xl border border-gray-800 bg-gray-950 px-3 text-sm text-gray-100 placeholder:text-gray-500 outline-none focus:border-blue-500/60"
+          />
+          <button
+            type="submit"
+            className="inline-flex h-9 items-center justify-center rounded-xl border border-gray-700 bg-gray-900 px-3 text-xs font-medium text-white hover:bg-gray-800"
+          >
+            검색
+          </button>
+          {chatSearchQuery ? (
+            <Link
+              href={requestedChatId ? `/chat?chat=${requestedChatId}` : '/chat'}
+              className="inline-flex h-9 items-center justify-center rounded-xl border border-gray-700 bg-gray-900 px-3 text-xs font-medium text-gray-300 hover:bg-gray-800"
+            >
+              초기화
+            </Link>
+          ) : null}
+          {isValidating ? <span className="text-[11px] text-gray-500 whitespace-nowrap">갱신중</span> : null}
+        </form>
+      ) : null}
 
       {chats.length > 0 ? (
         <main className="grid grid-cols-1 md:grid-cols-[280px_1fr] animate-imfencer-fade-up">
           <aside className="border-b md:border-b-0 md:border-r border-white/10">
-            {chats.map((chat) => {
+            {filteredChats.length > 0 ? filteredChats.map((chat) => {
               const isActive = chat.id === selectedChatId;
               return (
                 <Link
                   key={chat.id}
-                  href={`/chat?chat=${chat.id}`}
+                  href={chatSearchQuery ? `/chat?chat=${chat.id}&q=${encodeURIComponent(chatSearchQuery)}` : `/chat?chat=${chat.id}`}
                   prefetch={false}
                   className={`block border-b border-white/10 px-4 py-3 transition-colors ${
                     isActive ? 'bg-blue-500/10' : 'hover:bg-white/5'
@@ -187,7 +301,11 @@ export function ChatPageClient() {
                   <p className="mt-1 text-xs text-gray-400 line-clamp-1">{chat.last_message || '새 대화가 시작되었습니다.'}</p>
                 </Link>
               );
-            })}
+            }) : (
+              <div className="px-4 py-10 text-center text-sm text-gray-500">
+                검색 결과가 없습니다.
+              </div>
+            )}
           </aside>
 
           <section className="min-h-[60vh] flex flex-col">
@@ -204,8 +322,8 @@ export function ChatPageClient() {
                       최근 {data.chatMessagesLimit}개 메시지만 표시됩니다.
                     </p>
                   ) : null}
-                  {messages.length > 0 ? (
-                    messages.map((message) => {
+                  {filteredMessages.length > 0 ? (
+                    filteredMessages.map((message) => {
                       const profile = Array.isArray(message.profiles) ? message.profiles[0] : message.profiles;
                       const mine = message.sender_id === data.userId;
 
@@ -242,7 +360,9 @@ export function ChatPageClient() {
                       );
                     })
                   ) : (
-                    <p className="py-10 text-center text-sm text-gray-500">아직 메시지가 없습니다.</p>
+                    <p className="py-10 text-center text-sm text-gray-500">
+                      {chatSearchQuery ? '검색된 메시지가 없습니다.' : '아직 메시지가 없습니다.'}
+                    </p>
                   )}
                 </div>
                 <ChatComposer

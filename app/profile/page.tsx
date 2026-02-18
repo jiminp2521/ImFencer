@@ -18,7 +18,7 @@ export default async function MyProfilePage() {
       viewerUserId={user.id}
       showOwnerMenu
       backHref={null}
+      headerVariant="app"
     />
   );
 }
-

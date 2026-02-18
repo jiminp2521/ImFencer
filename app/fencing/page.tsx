@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 
 export const revalidate = 120;
 
@@ -31,13 +32,19 @@ export default async function FencingPage() {
   return (
     <div className="min-h-screen pb-20 bg-[radial-gradient(circle_at_top,_rgba(37,99,235,0.14),_rgba(0,0,0,0.97)_40%)]">
       <header className="sticky top-0 z-40 border-b border-white/10 bg-gradient-to-b from-black via-black/95 to-black/80 backdrop-blur-xl px-4 h-14 flex items-center justify-between">
-        <h1 className="text-lg font-bold text-white">펜싱</h1>
-        <Button asChild size="sm" className="h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-3 text-xs">
-          <Link href="/fencing/lessons/write">레슨 등록</Link>
-        </Button>
+        <div className="relative w-32 h-8">
+          <img src="/app-logo.png" alt="ImFencer" className="object-contain w-full h-full object-left" />
+        </div>
+        <NotificationBell />
       </header>
 
       <main className="px-4 py-5 space-y-4">
+        <section className="flex justify-end">
+          <Button asChild size="sm" className="h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-3 text-xs">
+            <Link href="/fencing/lessons/write">레슨 등록</Link>
+          </Button>
+        </section>
+
         <section className="space-y-2">
           <h2 className="text-base font-semibold text-white tracking-tight">메뉴 선택</h2>
           <p className="text-xs text-gray-500">
