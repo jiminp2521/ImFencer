@@ -162,9 +162,9 @@ export function HomePageClient() {
   }, [currentPage, hasNextPage, searchText, selectedCategory, selectedScope, selectedSort]);
 
   return (
-    <div className="pb-20 bg-[radial-gradient(circle_at_top,_rgba(37,99,235,0.2),_rgba(0,0,0,0.96)_42%)]">
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-gradient-to-b from-black via-black/95 to-black/80 backdrop-blur-xl px-4 py-3 flex items-center justify-between h-14">
-        <div className="relative w-32 h-8">
+    <div className="imf-page">
+      <header className="imf-topbar">
+        <div className="imf-logo">
           <img src="/app-logo.png" alt="ImFencer" className="object-contain w-full h-full object-left" />
         </div>
         <div className="flex items-center gap-2">
@@ -174,7 +174,7 @@ export function HomePageClient() {
             onClick={() => {
               setIsSearchOpen((prev) => !prev);
             }}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-gray-900 text-gray-300 hover:text-white hover:bg-gray-800 transition-colors"
+            className="imf-icon-button"
             aria-label="게시글 검색"
           >
             <Search className="h-4 w-4" />
@@ -182,128 +182,128 @@ export function HomePageClient() {
         </div>
       </header>
 
-      <div className="flex items-center gap-6 px-4 py-3 overflow-x-auto no-scrollbar border-b border-white/5">
-        {scopeFilters.map((filter) => {
-          const active = selectedScope === filter.value;
-          return (
-            <Link
-              key={filter.value}
-              href={buildHomeHref(filter.value, selectedCategory, selectedSort, 1, searchText)}
-              prefetch={false}
-              className={`whitespace-nowrap pb-1 text-[19px] tracking-tight transition-colors border-b-2 ${
-                active
-                  ? 'text-white border-white font-semibold'
-                  : 'text-gray-400 border-transparent hover:text-gray-200'
-              }`}
-            >
-              {filter.label}
-            </Link>
-          );
-        })}
-      </div>
+      <section className="px-4 pt-3">
+        <div className="imf-panel p-2">
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+            {scopeFilters.map((filter) => {
+              const active = selectedScope === filter.value;
+              return (
+                <Link
+                  key={filter.value}
+                  href={buildHomeHref(filter.value, selectedCategory, selectedSort, 1, searchText)}
+                  prefetch={false}
+                  className={`imf-chip h-9 px-4 text-sm ${active ? 'imf-chip-active' : ''}`}
+                >
+                  {filter.label}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </section>
 
-      {isSearchOpen ? (
-        <form action="/" className="border-b border-white/5 px-4 py-2 flex items-center gap-2">
-          {selectedScope !== 'all' ? <input type="hidden" name="scope" value={selectedScope} /> : null}
-          {selectedCategory !== 'All' ? <input type="hidden" name="category" value={selectedCategory} /> : null}
-          {selectedSort !== 'latest' ? <input type="hidden" name="sort" value={selectedSort} /> : null}
-          <input
-            type="text"
-            name="q"
-            defaultValue={searchText}
-            placeholder="게시글 검색"
-            className="h-9 w-full rounded-xl border border-gray-800 bg-gray-950 px-3 text-sm text-gray-100 placeholder:text-gray-500 outline-none focus:border-blue-500/60"
-          />
-          <button
-            type="submit"
-            className="inline-flex h-9 items-center justify-center rounded-xl border border-gray-700 bg-gray-900 px-3 text-xs font-medium text-white hover:bg-gray-800"
-          >
-            검색
-          </button>
-          {searchText ? (
-            <Link
-              href={buildHomeHref(selectedScope, selectedCategory, selectedSort, 1, '')}
-              prefetch={false}
-              className="inline-flex h-9 items-center justify-center rounded-xl border border-gray-700 bg-gray-900 px-3 text-xs font-medium text-gray-300 hover:bg-gray-800"
-            >
-              초기화
-            </Link>
-          ) : null}
-        </form>
-      ) : null}
+      <section className="px-4 pt-2">
+        <div className="imf-panel flex items-center gap-2 overflow-x-auto no-scrollbar p-2">
+          <details className="group relative shrink-0">
+            <summary className="imf-chip list-none flex h-9 items-center gap-1.5 px-3 cursor-pointer [&::-webkit-details-marker]:hidden">
+              {selectedSortLabel}
+              <ChevronDown className="h-3.5 w-3.5 text-slate-300 transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="absolute left-0 top-[calc(100%+8px)] z-50 min-w-[128px] rounded-xl border border-slate-700 bg-slate-950/95 p-1.5 shadow-2xl">
+              {sortFilters.map((filter) => (
+                <Link
+                  key={filter.value}
+                  href={buildHomeHref(selectedScope, selectedCategory, filter.value, 1, searchText)}
+                  prefetch={false}
+                  className={`block rounded-lg px-3 py-2 text-sm transition-colors ${
+                    selectedSort === filter.value
+                      ? 'bg-blue-500/20 text-blue-200'
+                      : 'text-slate-300 hover:bg-white/5'
+                  }`}
+                >
+                  {filter.label}
+                </Link>
+              ))}
+            </div>
+          </details>
 
-      <div className="flex items-center gap-2 px-4 py-2 overflow-x-auto no-scrollbar border-b border-white/5">
-        <details className="group relative shrink-0">
-          <summary className="list-none flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition-colors border bg-gray-900/80 text-white border-gray-700 cursor-pointer [&::-webkit-details-marker]:hidden">
-            {selectedSortLabel}
-            <ChevronDown className="h-3.5 w-3.5 text-gray-300 transition-transform group-open:rotate-180" />
-          </summary>
-          <div className="absolute left-0 top-[calc(100%+8px)] z-50 min-w-[120px] rounded-xl border border-white/10 bg-black/95 p-1.5 shadow-2xl">
-            {sortFilters.map((filter) => (
+          {categoryFilters.map((filter) => {
+            const active = selectedCategory === filter.value;
+            const nextCategory = active ? 'All' : filter.value;
+
+            return (
               <Link
                 key={filter.value}
-                href={buildHomeHref(selectedScope, selectedCategory, filter.value, 1, searchText)}
+                href={buildHomeHref(selectedScope, nextCategory, selectedSort, 1, searchText)}
                 prefetch={false}
-                className={`block rounded-lg px-3 py-2 text-sm transition-colors ${
-                  selectedSort === filter.value
-                    ? 'bg-blue-500/20 text-blue-300'
-                    : 'text-gray-300 hover:bg-white/5'
-                }`}
+                className={`imf-chip h-9 ${active ? 'imf-chip-active' : ''}`}
               >
                 {filter.label}
               </Link>
-            ))}
-          </div>
-        </details>
+            );
+          })}
+        </div>
+      </section>
 
-        {categoryFilters.map((filter) => {
-          const active = selectedCategory === filter.value;
-          const nextCategory = active ? 'All' : filter.value;
-
-          return (
-            <Link
-              key={filter.value}
-              href={buildHomeHref(selectedScope, nextCategory, selectedSort, 1, searchText)}
-              prefetch={false}
-              className={`px-3 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition-colors border ${
-                active
-                  ? 'bg-white text-black border-white'
-                  : 'bg-gray-900/80 text-gray-400 border-gray-800'
-              }`}
+      {isSearchOpen ? (
+        <form action="/" className="px-4 pt-2">
+          <div className="imf-panel flex items-center gap-2 p-2.5">
+            {selectedScope !== 'all' ? <input type="hidden" name="scope" value={selectedScope} /> : null}
+            {selectedCategory !== 'All' ? <input type="hidden" name="category" value={selectedCategory} /> : null}
+            {selectedSort !== 'latest' ? <input type="hidden" name="sort" value={selectedSort} /> : null}
+            <input
+              type="text"
+              name="q"
+              defaultValue={searchText}
+              placeholder="게시글 검색"
+              className="h-9 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-blue-500/70"
+            />
+            <button
+              type="submit"
+              className="h-9 rounded-xl bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-500"
             >
-              {filter.label}
-            </Link>
-          );
-        })}
-      </div>
+              검색
+            </button>
+            {searchText ? (
+              <Link
+                href={buildHomeHref(selectedScope, selectedCategory, selectedSort, 1, '')}
+                prefetch={false}
+                className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-700 bg-slate-900 px-3 text-xs font-medium text-slate-300 hover:bg-slate-800"
+              >
+                초기화
+              </Link>
+            ) : null}
+          </div>
+        </form>
+      ) : null}
 
-      <main className="animate-imfencer-fade-up">
+      <main className="animate-imfencer-fade-up px-4 py-3">
         {error ? (
-          <div className="px-4 py-10 text-center space-y-3">
+          <div className="imf-panel py-10 text-center space-y-3">
             <p className="text-sm text-red-300">피드를 불러오지 못했습니다.</p>
             <button
               type="button"
               onClick={() => {
                 void mutate();
               }}
-              className="inline-flex items-center justify-center rounded-md bg-gray-800 hover:bg-gray-700 px-4 py-2 text-xs font-medium text-white"
+              className="inline-flex items-center justify-center rounded-xl bg-slate-800 px-4 py-2 text-xs font-medium text-white hover:bg-slate-700"
             >
               다시 시도
             </button>
           </div>
         ) : isLoading && posts.length === 0 ? (
-          <div className="divide-y divide-white/10">
+          <div className="space-y-2">
             {Array.from({ length: 6 }).map((_, index) => (
-              <div key={`feed-skeleton-${index}`} className="p-4 space-y-2 animate-pulse">
-                <div className="h-3 w-32 rounded bg-gray-800" />
-                <div className="h-4 w-3/4 rounded bg-gray-800" />
-                <div className="h-3 w-full rounded bg-gray-900" />
-                <div className="h-3 w-2/3 rounded bg-gray-900" />
+              <div key={`feed-skeleton-${index}`} className="imf-panel animate-pulse space-y-2">
+                <div className="h-3 w-32 rounded bg-slate-800" />
+                <div className="h-4 w-3/4 rounded bg-slate-800" />
+                <div className="h-3 w-full rounded bg-slate-900" />
+                <div className="h-3 w-2/3 rounded bg-slate-900" />
               </div>
             ))}
           </div>
         ) : posts.length > 0 ? (
-          <div>
+          <div className="space-y-2">
             {posts.map((post) => (
               <FeedItem
                 key={post.id}
@@ -321,31 +321,31 @@ export function HomePageClient() {
             ))}
           </div>
         ) : (
-          <div className="px-4 py-20 text-center space-y-2 text-gray-500">
+          <div className="imf-panel py-16 text-center space-y-2 text-slate-400">
             {selectedScope === 'club' && !canUseClubFeed ? (
               <>
-                <p className="text-white font-semibold">내 클럽 커뮤니티는 로그인 후 이용할 수 있습니다.</p>
+                <p className="font-semibold text-white">내 클럽 커뮤니티는 로그인 후 이용할 수 있습니다.</p>
                 <Link
                   href="/login?next=%2F%3Fscope%3Dclub"
-                  className="inline-flex items-center justify-center rounded-md bg-blue-600 hover:bg-blue-700 px-4 py-2 text-sm text-white"
+                  className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-500"
                 >
-                  로그인하기
+                  로그인
                 </Link>
               </>
             ) : selectedScope === 'weapon' && !canUseWeaponFeed ? (
               <>
-                <p className="text-white font-semibold">내 종목 커뮤니티는 로그인 후 종목 설정이 필요합니다.</p>
+                <p className="font-semibold text-white">내 종목 커뮤니티는 로그인 후 종목 설정이 필요합니다.</p>
                 <Link
                   href="/login?next=%2Fsignup%2Fprofile"
-                  className="inline-flex items-center justify-center rounded-md bg-blue-600 hover:bg-blue-700 px-4 py-2 text-sm text-white"
+                  className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-500"
                 >
-                  로그인하고 종목 설정하기
+                  종목 설정하기
                 </Link>
               </>
             ) : (
               <>
                 <p>게시글이 없습니다.</p>
-                <p className="text-xs text-gray-600">첫 게시글을 작성해보세요.</p>
+                <p className="text-xs text-slate-500">첫 게시글을 작성해보세요.</p>
               </>
             )}
           </div>
@@ -353,39 +353,41 @@ export function HomePageClient() {
       </main>
 
       {currentPage > 1 || hasNextPage ? (
-        <div className="border-t border-white/5 px-4 py-4 flex items-center justify-between text-xs">
-          {currentPage > 1 ? (
-            <Link
-              href={buildHomeHref(selectedScope, selectedCategory, selectedSort, currentPage - 1, searchText)}
-              prefetch={false}
-              className="rounded-full border border-gray-700 bg-gray-900 px-3 py-1.5 text-gray-300 hover:bg-gray-800"
-            >
-              이전
-            </Link>
-          ) : (
-            <span className="rounded-full border border-gray-800 bg-gray-900/60 px-3 py-1.5 text-gray-600">
-              이전
-            </span>
-          )}
+        <div className="px-4 pb-4">
+          <div className="imf-panel flex items-center justify-between text-xs">
+            {currentPage > 1 ? (
+              <Link
+                href={buildHomeHref(selectedScope, selectedCategory, selectedSort, currentPage - 1, searchText)}
+                prefetch={false}
+                className="imf-pill border-slate-600 px-3 py-1.5 hover:border-slate-500"
+              >
+                이전
+              </Link>
+            ) : (
+              <span className="imf-pill border-slate-800 bg-slate-900/60 px-3 py-1.5 text-slate-600">
+                이전
+              </span>
+            )}
 
-          <span className="text-gray-500">
-            {currentPage}페이지
-            {isValidating ? ' • 갱신중' : ''}
-          </span>
-
-          {hasNextPage ? (
-            <Link
-              href={buildHomeHref(selectedScope, selectedCategory, selectedSort, currentPage + 1, searchText)}
-              prefetch={false}
-              className="rounded-full border border-gray-700 bg-gray-900 px-3 py-1.5 text-gray-300 hover:bg-gray-800"
-            >
-              다음
-            </Link>
-          ) : (
-            <span className="rounded-full border border-gray-800 bg-gray-900/60 px-3 py-1.5 text-gray-600">
-              다음
+            <span className="text-slate-400">
+              {currentPage}페이지
+              {isValidating ? ' • 갱신중' : ''}
             </span>
-          )}
+
+            {hasNextPage ? (
+              <Link
+                href={buildHomeHref(selectedScope, selectedCategory, selectedSort, currentPage + 1, searchText)}
+                prefetch={false}
+                className="imf-pill border-slate-600 px-3 py-1.5 hover:border-slate-500"
+              >
+                다음
+              </Link>
+            ) : (
+              <span className="imf-pill border-slate-800 bg-slate-900/60 px-3 py-1.5 text-slate-600">
+                다음
+              </span>
+            )}
+          </div>
         </div>
       ) : null}
 

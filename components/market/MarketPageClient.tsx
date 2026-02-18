@@ -56,9 +56,9 @@ const statusLabelMap: Record<string, string> = {
 };
 
 const statusStyleMap: Record<string, string> = {
-  selling: 'border-emerald-600/40 bg-emerald-500/10 text-emerald-400',
-  reserved: 'border-amber-600/40 bg-amber-500/10 text-amber-400',
-  sold: 'border-gray-700 bg-gray-800/60 text-gray-300',
+  selling: 'border-emerald-400/40 bg-emerald-500/15 text-emerald-200',
+  reserved: 'border-amber-400/40 bg-amber-500/15 text-amber-200',
+  sold: 'border-slate-600 bg-slate-700/60 text-slate-200',
 };
 
 const weaponLabelMap: Record<string, string> = {
@@ -174,9 +174,9 @@ export function MarketPageClient() {
   }, [currentPage, hasNextPage, searchText, selectedStatus, selectedWeapon]);
 
   return (
-    <div className="min-h-screen pb-20 bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.14),_rgba(0,0,0,0.97)_42%)]">
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-gradient-to-b from-black via-black/95 to-black/80 backdrop-blur-xl px-4 h-14 flex items-center justify-between">
-        <div className="relative w-32 h-8">
+    <div className="imf-page">
+      <header className="imf-topbar">
+        <div className="imf-logo">
           <img src="/app-logo.png" alt="ImFencer" className="object-contain w-full h-full object-left" />
         </div>
         <div className="flex items-center gap-2">
@@ -186,7 +186,7 @@ export function MarketPageClient() {
             onClick={() => {
               setIsSearchOpen((prev) => !prev);
             }}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-gray-900 text-gray-300 hover:text-white hover:bg-gray-800 transition-colors"
+            className="imf-icon-button"
             aria-label="마켓 검색"
           >
             <Search className="h-4 w-4" />
@@ -194,16 +194,53 @@ export function MarketPageClient() {
         </div>
       </header>
 
-      <div className="space-y-2 border-b border-white/5 px-4 py-3">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-xs text-gray-500">장비/용품 거래</p>
-          <Button asChild size="sm" className="h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-3 text-xs">
-            <Link href="/market/write" prefetch={false}>판매글 등록</Link>
-          </Button>
+      <section className="px-4 pt-3 space-y-2">
+        <div className="imf-panel p-3">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <p className="text-xs text-slate-400">장비/용품 거래</p>
+            <Button asChild size="sm" className="h-8 rounded-full bg-blue-600 px-3 text-xs text-white hover:bg-blue-500">
+              <Link href="/market/write" prefetch={false}>판매글 등록</Link>
+            </Button>
+          </div>
+
+          <div className="mb-2 flex gap-2 overflow-x-auto no-scrollbar">
+            {statusFilters.map((filter) => (
+              <Link
+                key={filter.value}
+                href={buildMarketHref(filter.value, selectedWeapon, searchText, 1)}
+                prefetch={false}
+                className={`imf-chip ${selectedStatus === filter.value ? 'imf-chip-active' : ''}`}
+              >
+                {filter.label}
+              </Link>
+            ))}
+          </div>
+
+          <div className="flex gap-2 overflow-x-auto no-scrollbar">
+            {weaponFilters.map((filter) => (
+              <Link
+                key={filter.value}
+                href={buildMarketHref(selectedStatus, filter.value, searchText, 1)}
+                prefetch={false}
+                className={`imf-chip ${selectedWeapon === filter.value ? 'imf-chip-active' : ''}`}
+              >
+                {filter.label}
+              </Link>
+            ))}
+          </div>
+
+          {searchText ? (
+            <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400">
+              <span>&quot;{searchText}&quot; 검색 중</span>
+              <Link href={buildMarketHref(selectedStatus, selectedWeapon, '', 1)} className="text-slate-300 hover:text-slate-100" prefetch={false}>
+                검색 해제
+              </Link>
+            </div>
+          ) : null}
         </div>
 
         {isSearchOpen ? (
-          <form action="/market" className="flex gap-2">
+          <form action="/market" className="imf-panel flex gap-2 p-2.5">
             {selectedStatus !== 'All' ? <input type="hidden" name="status" value={selectedStatus} /> : null}
             {selectedWeapon !== 'All' ? <input type="hidden" name="weapon" value={selectedWeapon} /> : null}
             <input
@@ -211,126 +248,82 @@ export function MarketPageClient() {
               name="q"
               defaultValue={searchText}
               placeholder="상품명/브랜드 검색"
-              className="h-9 w-full rounded-md border border-gray-800 bg-gray-950 px-3 text-sm text-gray-100 placeholder:text-gray-500 outline-none focus:border-blue-500/60"
+              className="h-9 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-blue-500/70"
             />
             <Button
               type="submit"
-              variant="outline"
-              className="h-9 border-gray-700 bg-gray-950 text-gray-200 hover:bg-gray-900"
+              className="h-9 rounded-xl bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-500"
             >
               검색
             </Button>
           </form>
         ) : null}
+      </section>
 
-        <div className="flex gap-2 overflow-x-auto no-scrollbar">
-          {statusFilters.map((filter) => (
-            <Link
-              key={filter.value}
-              href={buildMarketHref(filter.value, selectedWeapon, searchText, 1)}
-              prefetch={false}
-              className={`px-3 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition-colors border ${
-                selectedStatus === filter.value
-                  ? 'bg-white text-black border-white'
-                  : 'bg-gray-900/80 text-gray-400 border-gray-800'
-              }`}
-            >
-              {filter.label}
-            </Link>
-          ))}
-        </div>
-
-        <div className="flex gap-2 overflow-x-auto no-scrollbar">
-          {weaponFilters.map((filter) => (
-            <Link
-              key={filter.value}
-              href={buildMarketHref(selectedStatus, filter.value, searchText, 1)}
-              prefetch={false}
-              className={`px-3 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition-colors border ${
-                selectedWeapon === filter.value
-                  ? 'bg-blue-600/80 text-white border-blue-500/60'
-                  : 'bg-gray-900/80 text-gray-400 border-gray-800'
-              }`}
-            >
-              {filter.label}
-            </Link>
-          ))}
-        </div>
-
-        {searchText ? (
-          <div className="flex items-center justify-between text-[11px] text-gray-500">
-            <span>&quot;{searchText}&quot; 검색 중</span>
-            <Link href={buildMarketHref(selectedStatus, selectedWeapon, '', 1)} className="text-gray-400 hover:text-gray-200" prefetch={false}>
-              검색 해제
-            </Link>
-          </div>
-        ) : null}
-      </div>
-
-      <main className="animate-imfencer-fade-up">
+      <main className="animate-imfencer-fade-up px-4 py-2">
         {error ? (
-          <div className="px-4 py-10 text-center space-y-3">
+          <div className="imf-panel py-10 text-center space-y-3">
             <p className="text-sm text-red-300">마켓 목록을 불러오지 못했습니다.</p>
             <button
               type="button"
               onClick={() => {
                 void mutate();
               }}
-              className="inline-flex items-center justify-center rounded-md bg-gray-800 hover:bg-gray-700 px-4 py-2 text-xs font-medium text-white"
+              className="inline-flex items-center justify-center rounded-xl bg-slate-800 px-4 py-2 text-xs font-medium text-white hover:bg-slate-700"
             >
               다시 시도
             </button>
           </div>
         ) : isLoading && items.length === 0 ? (
-          <div className="divide-y divide-white/10">
+          <div className="space-y-2">
             {Array.from({ length: 7 }).map((_, index) => (
-              <div key={`market-skeleton-${index}`} className="p-4 animate-pulse">
+              <div key={`market-skeleton-${index}`} className="imf-panel animate-pulse">
                 <div className="flex gap-3">
-                  <div className="h-20 w-20 rounded-md bg-gray-800" />
+                  <div className="h-20 w-20 rounded-xl bg-slate-800" />
                   <div className="flex-1 space-y-2">
-                    <div className="h-3 w-2/3 rounded bg-gray-800" />
-                    <div className="h-4 w-1/3 rounded bg-gray-700" />
-                    <div className="h-3 w-1/2 rounded bg-gray-900" />
+                    <div className="h-3 w-2/3 rounded bg-slate-800" />
+                    <div className="h-4 w-1/3 rounded bg-slate-700" />
+                    <div className="h-3 w-1/2 rounded bg-slate-900" />
                   </div>
                 </div>
               </div>
             ))}
           </div>
         ) : items.length > 0 ? (
-          <div className="divide-y divide-white/10">
+          <div className="space-y-2">
             {items.map((item) => {
               const profile = Array.isArray(item.profiles) ? item.profiles[0] : item.profiles;
-              const statusClass = statusStyleMap[item.status] || 'border-gray-700 bg-gray-800/60 text-gray-300';
+              const statusClass = statusStyleMap[item.status] || 'border-slate-700 bg-slate-800/60 text-slate-300';
 
               return (
                 <Link
                   key={item.id}
                   href={`/market/${item.id}`}
                   prefetch={false}
-                  className="block p-4 hover:bg-white/5 transition-colors"
+                  className="imf-panel block p-4 transition-colors hover:border-blue-400/35"
                 >
                   <div className="flex gap-3">
                     {item.image_url ? (
                       <img
                         src={item.image_url}
                         alt={item.title}
-                        className="h-20 w-20 rounded-md border border-white/10 object-cover shrink-0 bg-gray-900"
+                        className="h-20 w-20 shrink-0 rounded-xl border border-white/10 object-cover bg-slate-950"
                       />
                     ) : (
-                      <div className="h-20 w-20 rounded-md border border-white/10 bg-gray-900 shrink-0 flex items-center justify-center text-[10px] text-gray-600">
+                      <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-slate-950 text-[10px] text-slate-600">
                         NO IMAGE
                       </div>
                     )}
 
-                    <div className="flex-1 min-w-0 space-y-1.5">
+                    <div className="min-w-0 flex-1 space-y-1.5">
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-semibold text-white line-clamp-1">{item.title}</p>
+                        <p className="line-clamp-1 text-sm font-semibold text-white">{item.title}</p>
                         <Badge className={`border ${statusClass}`}>{statusLabelMap[item.status] || item.status}</Badge>
                       </div>
 
-                      <p className="text-base font-bold text-blue-400">{item.price.toLocaleString('ko-KR')}원</p>
+                      <p className="text-base font-extrabold text-blue-300">{item.price.toLocaleString('ko-KR')}원</p>
 
-                      <div className="flex items-center gap-1.5 text-[11px] text-gray-500 flex-wrap">
+                      <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-400">
                         {item.weapon_type && <span>{weaponLabelMap[item.weapon_type] || item.weapon_type}</span>}
                         {item.brand && (
                           <>
@@ -346,7 +339,7 @@ export function MarketPageClient() {
                         )}
                       </div>
 
-                      <div className="flex items-center gap-2 text-[11px] text-gray-500">
+                      <div className="flex items-center gap-2 text-[11px] text-slate-500">
                         <span>{profile?.username || '알 수 없음'}</span>
                         <span>•</span>
                         <span>{getTimeAgo(item.created_at)}</span>
@@ -358,47 +351,49 @@ export function MarketPageClient() {
             })}
           </div>
         ) : (
-          <div className="px-4 py-20 text-center space-y-2 text-gray-500">
+          <div className="imf-panel py-20 text-center space-y-2 text-slate-400">
             <p>등록된 판매글이 없습니다.</p>
-            <p className="text-xs text-gray-600">첫 번째 판매글을 등록해보세요.</p>
+            <p className="text-xs text-slate-500">첫 번째 판매글을 등록해보세요.</p>
           </div>
         )}
       </main>
 
       {currentPage > 1 || hasNextPage ? (
-        <div className="border-t border-white/5 px-4 py-4 flex items-center justify-between text-xs">
-          {currentPage > 1 ? (
-            <Link
-              href={buildMarketHref(selectedStatus, selectedWeapon, searchText, currentPage - 1)}
-              className="rounded-full border border-gray-700 bg-gray-900 px-3 py-1.5 text-gray-300 hover:bg-gray-800"
-              prefetch={false}
-            >
-              이전
-            </Link>
-          ) : (
-            <span className="rounded-full border border-gray-800 bg-gray-900/60 px-3 py-1.5 text-gray-600">
-              이전
-            </span>
-          )}
+        <div className="px-4 pb-4">
+          <div className="imf-panel flex items-center justify-between text-xs">
+            {currentPage > 1 ? (
+              <Link
+                href={buildMarketHref(selectedStatus, selectedWeapon, searchText, currentPage - 1)}
+                className="imf-pill border-slate-600 px-3 py-1.5 hover:border-slate-500"
+                prefetch={false}
+              >
+                이전
+              </Link>
+            ) : (
+              <span className="imf-pill border-slate-800 bg-slate-900/60 px-3 py-1.5 text-slate-600">
+                이전
+              </span>
+            )}
 
-          <span className="text-gray-500">
-            {currentPage}페이지
-            {isValidating ? ' • 갱신중' : ''}
-          </span>
-
-          {hasNextPage ? (
-            <Link
-              href={buildMarketHref(selectedStatus, selectedWeapon, searchText, currentPage + 1)}
-              className="rounded-full border border-gray-700 bg-gray-900 px-3 py-1.5 text-gray-300 hover:bg-gray-800"
-              prefetch={false}
-            >
-              다음
-            </Link>
-          ) : (
-            <span className="rounded-full border border-gray-800 bg-gray-900/60 px-3 py-1.5 text-gray-600">
-              다음
+            <span className="text-slate-400">
+              {currentPage}페이지
+              {isValidating ? ' • 갱신중' : ''}
             </span>
-          )}
+
+            {hasNextPage ? (
+              <Link
+                href={buildMarketHref(selectedStatus, selectedWeapon, searchText, currentPage + 1)}
+                className="imf-pill border-slate-600 px-3 py-1.5 hover:border-slate-500"
+                prefetch={false}
+              >
+                다음
+              </Link>
+            ) : (
+              <span className="imf-pill border-slate-800 bg-slate-900/60 px-3 py-1.5 text-slate-600">
+                다음
+              </span>
+            )}
+          </div>
         </div>
       ) : null}
     </div>

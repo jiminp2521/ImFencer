@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { memo } from 'react';
+import { Heart, MessageCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 interface FeedItemProps {
@@ -46,31 +47,41 @@ export const FeedItem = memo(function FeedItem({
     commentCount = 0,
 }: FeedItemProps) {
     return (
-        <Link href={`/posts/${id}`} prefetch={false} className="block border-b border-white/10 p-4 hover:bg-white/5 transition-colors active:bg-white/10 [content-visibility:auto] [contain-intrinsic-size:220px]">
-            <div className="flex gap-4">
+        <Link
+            href={`/posts/${id}`}
+            prefetch={false}
+            className="imf-panel block p-4 transition-colors hover:border-blue-400/30 hover:bg-slate-900/75 active:scale-[0.997] [content-visibility:auto] [contain-intrinsic-size:220px]"
+        >
+            <div className="flex gap-3">
                 <div className="flex-1 space-y-2">
-                    <div className="flex items-center gap-2 text-xs text-gray-400">
-                        <Badge variant="outline" className="border-gray-700 text-gray-400 bg-transparent text-[10px] px-1.5 py-0 h-5">
+                    <div className="flex items-center gap-2 text-xs text-slate-400">
+                        <Badge variant="outline" className="border-slate-600 bg-slate-800/70 text-[10px] text-slate-300">
                             {categoryMap[category] || category}
                         </Badge>
-                        <span className="font-medium text-gray-300">{author}</span>
+                        <span className="font-medium text-slate-200">{author}</span>
                         <span>•</span>
                         <span>{getTimeAgo(date)}</span>
                     </div>
-                    <h3 className="font-semibold text-base text-white leading-tight line-clamp-2">
+                    <h3 className="line-clamp-2 text-[15px] font-semibold leading-snug text-white">
                         {title}
                     </h3>
-                    <p className="text-sm text-gray-400 line-clamp-2">
+                    <p className="line-clamp-2 text-sm text-slate-400">
                         {previewText}
                     </p>
-                    <div className="flex items-center gap-3 text-[11px] text-gray-500">
-                        <span>좋아요 {likeCount}</span>
-                        <span>댓글 {commentCount}</span>
+                    <div className="flex items-center gap-3 text-[11px] text-slate-400">
+                        <span className="inline-flex items-center gap-1">
+                            <Heart className="h-3.5 w-3.5" />
+                            {likeCount}
+                        </span>
+                        <span className="inline-flex items-center gap-1">
+                            <MessageCircle className="h-3.5 w-3.5" />
+                            {commentCount}
+                        </span>
                     </div>
                     {tags && tags.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-2">
                             {tags.map((tag) => (
-                                <span key={tag} className="text-[10px] text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded">
+                                <span key={tag} className="rounded-md bg-blue-500/10 px-1.5 py-0.5 text-[10px] text-blue-300">
                                     #{tag}
                                 </span>
                             ))}
@@ -78,7 +89,7 @@ export const FeedItem = memo(function FeedItem({
                     )}
                 </div>
                 {imageUrl && (
-                    <div className="relative w-20 h-20 shrink-0 overflow-hidden rounded-md border border-white/10 bg-gray-900">
+                    <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-slate-950">
                         <Image
                             src={imageUrl}
                             alt={title}

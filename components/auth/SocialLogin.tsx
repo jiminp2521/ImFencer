@@ -109,7 +109,7 @@ export function SocialLogin({ mode = 'login' }: SocialLoginProps) {
                 type="button"
                 variant="ghost"
                 onClick={() => handleSocialLogin('kakao')}
-                className="w-full bg-[#FEE500] hover:bg-[#FEE500]/90 text-black h-12 relative rounded-xl"
+                className="relative h-12 w-full rounded-2xl bg-[#FEE500] text-black shadow-[0_8px_18px_rgba(254,229,0,0.24)] hover:bg-[#FEE500]/90"
                 disabled={Boolean(pendingProvider)}
             >
                 <div className="absolute left-5 w-5 h-5 flex items-center justify-center">
@@ -125,7 +125,7 @@ export function SocialLogin({ mode = 'login' }: SocialLoginProps) {
                 type="button"
                 variant="ghost"
                 onClick={() => handleSocialLogin('google')}
-                className="w-full bg-white hover:bg-gray-50 text-black h-12 relative rounded-xl border border-gray-200"
+                className="relative h-12 w-full rounded-2xl border border-slate-200 bg-white text-black shadow-[0_8px_18px_rgba(255,255,255,0.12)] hover:bg-slate-100"
                 disabled={Boolean(pendingProvider)}
             >
                 <div className="absolute left-5 w-5 h-5 flex items-center justify-center">
@@ -156,7 +156,7 @@ export function SocialLogin({ mode = 'login' }: SocialLoginProps) {
                 type="button"
                 variant="ghost"
                 onClick={() => handleSocialLogin('apple')}
-                className="w-full bg-black hover:bg-gray-900 text-white h-12 relative rounded-xl"
+                className="relative h-12 w-full rounded-2xl border border-slate-600 bg-black text-white shadow-[0_8px_18px_rgba(0,0,0,0.45)] hover:bg-slate-900"
                 disabled={Boolean(pendingProvider)}
             >
                 <div className="absolute left-5 w-5 h-5 flex items-center justify-center">

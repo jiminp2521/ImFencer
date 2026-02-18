@@ -60,6 +60,25 @@ const fetchChatOverview = async (url: string): Promise<ChatOverviewResponse> => 
   return response.json() as Promise<ChatOverviewResponse>;
 };
 
+const ChatHeader = ({ onToggleSearch }: { onToggleSearch: () => void }) => (
+  <header className="imf-topbar">
+    <div className="imf-logo">
+      <img src="/app-logo.png" alt="ImFencer" className="object-contain w-full h-full object-left" />
+    </div>
+    <div className="flex items-center gap-2">
+      <NotificationBell />
+      <button
+        type="button"
+        onClick={onToggleSearch}
+        className="imf-icon-button"
+        aria-label="채팅 검색"
+      >
+        <Search className="h-4 w-4" />
+      </button>
+    </div>
+  </header>
+);
+
 export function ChatPageClient() {
   const searchParams = useSearchParams();
   const requestedChatId = searchParams.get('chat');
@@ -84,36 +103,21 @@ export function ChatPageClient() {
 
   if (error) {
     return (
-      <div className="min-h-screen pb-20 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.14),_rgba(0,0,0,0.96)_38%)]">
-        <header className="sticky top-0 z-40 border-b border-white/10 bg-gradient-to-b from-black via-black/95 to-black/80 backdrop-blur-xl px-4 h-14 flex items-center justify-between">
-          <div className="relative w-32 h-8">
-            <img src="/app-logo.png" alt="ImFencer" className="object-contain w-full h-full object-left" />
-          </div>
-          <div className="flex items-center gap-2">
-            <NotificationBell />
+      <div className="imf-page">
+        <ChatHeader onToggleSearch={() => setIsSearchOpen((prev) => !prev)} />
+        <main className="px-4 py-16 text-center space-y-4 animate-imfencer-fade-up">
+          <div className="imf-panel py-10">
+            <p className="text-sm text-red-300">채팅 데이터를 불러오지 못했습니다.</p>
             <button
               type="button"
               onClick={() => {
-                setIsSearchOpen((prev) => !prev);
+                void mutate();
               }}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-gray-900 text-gray-300 hover:text-white hover:bg-gray-800 transition-colors"
-              aria-label="채팅 검색"
+              className="mt-3 inline-flex items-center justify-center rounded-xl bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
             >
-              <Search className="h-4 w-4" />
+              다시 시도
             </button>
           </div>
-        </header>
-        <main className="px-4 py-16 text-center space-y-4 animate-imfencer-fade-up">
-          <p className="text-sm text-red-300">채팅 데이터를 불러오지 못했습니다.</p>
-          <button
-            type="button"
-            onClick={() => {
-              void mutate();
-            }}
-            className="inline-flex items-center justify-center rounded-md bg-gray-800 hover:bg-gray-700 px-4 py-2 text-sm font-medium text-white"
-          >
-            다시 시도
-          </button>
         </main>
       </div>
     );
@@ -121,30 +125,13 @@ export function ChatPageClient() {
 
   if (!data || isLoading) {
     return (
-      <div className="min-h-screen pb-20 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.14),_rgba(0,0,0,0.96)_38%)]">
-        <header className="sticky top-0 z-40 border-b border-white/10 bg-gradient-to-b from-black via-black/95 to-black/80 backdrop-blur-xl px-4 h-14 flex items-center justify-between">
-          <div className="relative w-32 h-8">
-            <img src="/app-logo.png" alt="ImFencer" className="object-contain w-full h-full object-left" />
-          </div>
-          <div className="flex items-center gap-2">
-            <NotificationBell />
-            <button
-              type="button"
-              onClick={() => {
-                setIsSearchOpen((prev) => !prev);
-              }}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-gray-900 text-gray-300 hover:text-white hover:bg-gray-800 transition-colors"
-              aria-label="채팅 검색"
-            >
-              <Search className="h-4 w-4" />
-            </button>
-          </div>
-        </header>
-        <main className="px-4 py-6 space-y-3 animate-pulse">
+      <div className="imf-page">
+        <ChatHeader onToggleSearch={() => setIsSearchOpen((prev) => !prev)} />
+        <main className="px-4 py-6 space-y-2 animate-pulse">
           {Array.from({ length: 8 }).map((_, index) => (
-            <div key={`chat-skeleton-${index}`} className="rounded-md border border-white/10 bg-gray-900/40 p-3 space-y-2">
-              <div className="h-3 w-1/3 rounded bg-gray-800" />
-              <div className="h-3 w-2/3 rounded bg-gray-900" />
+            <div key={`chat-skeleton-${index}`} className="imf-panel space-y-2">
+              <div className="h-3 w-1/3 rounded bg-slate-800" />
+              <div className="h-3 w-2/3 rounded bg-slate-900" />
             </div>
           ))}
         </main>
@@ -154,34 +141,19 @@ export function ChatPageClient() {
 
   if (!data.authenticated) {
     return (
-      <div className="min-h-screen pb-20 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.14),_rgba(0,0,0,0.96)_38%)]">
-        <header className="sticky top-0 z-40 border-b border-white/10 bg-gradient-to-b from-black via-black/95 to-black/80 backdrop-blur-xl px-4 h-14 flex items-center justify-between">
-          <div className="relative w-32 h-8">
-            <img src="/app-logo.png" alt="ImFencer" className="object-contain w-full h-full object-left" />
-          </div>
-          <div className="flex items-center gap-2">
-            <NotificationBell />
-            <button
-              type="button"
-              onClick={() => {
-                setIsSearchOpen((prev) => !prev);
-              }}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-gray-900 text-gray-300 hover:text-white hover:bg-gray-800 transition-colors"
-              aria-label="채팅 검색"
-            >
-              <Search className="h-4 w-4" />
-            </button>
-          </div>
-        </header>
+      <div className="imf-page">
+        <ChatHeader onToggleSearch={() => setIsSearchOpen((prev) => !prev)} />
         <main className="px-4 py-16 text-center space-y-4 animate-imfencer-fade-up">
-          <p className="text-lg font-semibold text-white">로그인 후 채팅을 이용할 수 있습니다.</p>
-          <p className="text-sm text-gray-400">커뮤니티/마켓/펜싱 메뉴에서 문의를 보내면 채팅방이 생성됩니다.</p>
-          <Link
-            href="/login?next=/chat"
-            className="inline-flex items-center justify-center rounded-md bg-blue-600 hover:bg-blue-700 px-4 py-2 text-sm font-medium text-white"
-          >
-            로그인하기
-          </Link>
+          <div className="imf-panel py-10">
+            <p className="text-lg font-semibold text-white">로그인 후 채팅을 이용할 수 있습니다.</p>
+            <p className="mt-1 text-sm text-slate-400">커뮤니티/마켓/펜싱 메뉴에서 문의를 보내면 채팅방이 생성됩니다.</p>
+            <Link
+              href="/login?next=/chat"
+              className="mt-3 inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500"
+            >
+              로그인
+            </Link>
+          </div>
         </main>
       </div>
     );
@@ -212,7 +184,7 @@ export function ChatPageClient() {
     : messages;
 
   return (
-    <div className="min-h-screen pb-20 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.14),_rgba(0,0,0,0.96)_38%)]">
+    <div className="imf-page">
       {chatIds.length > 0 ? (
         <ChatRealtimeSync
           chatIds={chatIds}
@@ -221,56 +193,42 @@ export function ChatPageClient() {
           }}
         />
       ) : null}
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-gradient-to-b from-black via-black/95 to-black/80 backdrop-blur-xl px-4 h-14 flex items-center justify-between">
-        <div className="relative w-32 h-8">
-          <img src="/app-logo.png" alt="ImFencer" className="object-contain w-full h-full object-left" />
-        </div>
-        <div className="flex items-center gap-2">
-          <NotificationBell />
-          <button
-            type="button"
-            onClick={() => {
-              setIsSearchOpen((prev) => !prev);
-            }}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-gray-900 text-gray-300 hover:text-white hover:bg-gray-800 transition-colors"
-            aria-label="채팅 검색"
-          >
-            <Search className="h-4 w-4" />
-          </button>
-        </div>
-      </header>
+
+      <ChatHeader onToggleSearch={() => setIsSearchOpen((prev) => !prev)} />
 
       {isSearchOpen ? (
-        <form action="/chat" className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
-          {requestedChatId ? <input type="hidden" name="chat" value={requestedChatId} /> : null}
-          <input
-            type="text"
-            name="q"
-            defaultValue={chatSearchQuery}
-            placeholder="상대 닉네임 또는 대화 내용 검색"
-            className="h-9 w-full rounded-xl border border-gray-800 bg-gray-950 px-3 text-sm text-gray-100 placeholder:text-gray-500 outline-none focus:border-blue-500/60"
-          />
-          <button
-            type="submit"
-            className="inline-flex h-9 items-center justify-center rounded-xl border border-gray-700 bg-gray-900 px-3 text-xs font-medium text-white hover:bg-gray-800"
-          >
-            검색
-          </button>
-          {chatSearchQuery ? (
-            <Link
-              href={requestedChatId ? `/chat?chat=${requestedChatId}` : '/chat'}
-              className="inline-flex h-9 items-center justify-center rounded-xl border border-gray-700 bg-gray-900 px-3 text-xs font-medium text-gray-300 hover:bg-gray-800"
+        <form action="/chat" className="px-4 pt-2">
+          <div className="imf-panel flex items-center gap-2 p-2.5">
+            {requestedChatId ? <input type="hidden" name="chat" value={requestedChatId} /> : null}
+            <input
+              type="text"
+              name="q"
+              defaultValue={chatSearchQuery}
+              placeholder="상대 닉네임 또는 대화 내용 검색"
+              className="h-9 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-blue-500/70"
+            />
+            <button
+              type="submit"
+              className="inline-flex h-9 items-center justify-center rounded-xl bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-500"
             >
-              초기화
-            </Link>
-          ) : null}
-          {isValidating ? <span className="text-[11px] text-gray-500 whitespace-nowrap">갱신중</span> : null}
+              검색
+            </button>
+            {chatSearchQuery ? (
+              <Link
+                href={requestedChatId ? `/chat?chat=${requestedChatId}` : '/chat'}
+                className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-700 bg-slate-900 px-3 text-xs font-medium text-slate-300 hover:bg-slate-800"
+              >
+                초기화
+              </Link>
+            ) : null}
+            {isValidating ? <span className="text-[11px] text-slate-500 whitespace-nowrap">갱신중</span> : null}
+          </div>
         </form>
       ) : null}
 
       {chats.length > 0 ? (
-        <main className="grid grid-cols-1 md:grid-cols-[280px_1fr] animate-imfencer-fade-up">
-          <aside className="border-b md:border-b-0 md:border-r border-white/10">
+        <main className="animate-imfencer-fade-up px-4 py-2 grid grid-cols-1 gap-2 md:grid-cols-[300px_1fr]">
+          <aside className="imf-panel overflow-hidden p-0">
             {filteredChats.length > 0 ? filteredChats.map((chat) => {
               const isActive = chat.id === selectedChatId;
               return (
@@ -279,18 +237,18 @@ export function ChatPageClient() {
                   href={chatSearchQuery ? `/chat?chat=${chat.id}&q=${encodeURIComponent(chatSearchQuery)}` : `/chat?chat=${chat.id}`}
                   prefetch={false}
                   className={`block border-b border-white/10 px-4 py-3 transition-colors ${
-                    isActive ? 'bg-blue-500/10' : 'hover:bg-white/5'
+                    isActive ? 'bg-blue-500/15' : 'hover:bg-white/5'
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-sm font-semibold text-white">{partnerMap[chat.id] || '채팅방'}</p>
                     <div className="flex items-center gap-2">
                       {unreadCountMap[chat.id] ? (
-                        <span className="inline-flex min-w-5 h-5 px-1.5 items-center justify-center rounded-full bg-red-500 text-[10px] font-semibold text-white">
+                        <span className="inline-flex min-w-5 h-5 px-1.5 items-center justify-center rounded-full bg-orange-500 text-[10px] font-semibold text-white">
                           {unreadCountMap[chat.id]}
                         </span>
                       ) : null}
-                      <span className="text-[11px] text-gray-500">
+                      <span className="text-[11px] text-slate-500">
                         {new Date(chat.updated_at).toLocaleDateString('ko-KR', {
                           month: 'short',
                           day: 'numeric',
@@ -298,27 +256,27 @@ export function ChatPageClient() {
                       </span>
                     </div>
                   </div>
-                  <p className="mt-1 text-xs text-gray-400 line-clamp-1">{chat.last_message || '새 대화가 시작되었습니다.'}</p>
+                  <p className="mt-1 line-clamp-1 text-xs text-slate-400">{chat.last_message || '새 대화가 시작되었습니다.'}</p>
                 </Link>
               );
             }) : (
-              <div className="px-4 py-10 text-center text-sm text-gray-500">
+              <div className="px-4 py-10 text-center text-sm text-slate-500">
                 검색 결과가 없습니다.
               </div>
             )}
           </aside>
 
-          <section className="min-h-[60vh] flex flex-col">
+          <section className="imf-panel min-h-[60vh] flex flex-col p-0 overflow-hidden">
             {selectedChatId ? (
               <>
-                <div className="px-4 py-3 border-b border-white/10">
+                <div className="border-b border-white/10 px-4 py-3">
                   <p className="text-sm font-semibold text-white">
                     {partnerMap[selectedChatId] || '채팅방'}
                   </p>
                 </div>
                 <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
                   {data.reachedMessageLimit ? (
-                    <p className="text-center text-[11px] text-gray-500">
+                    <p className="text-center text-[11px] text-slate-500">
                       최근 {data.chatMessagesLimit}개 메시지만 표시됩니다.
                     </p>
                   ) : null}
@@ -333,11 +291,13 @@ export function ChatPageClient() {
                           className={`flex ${mine ? 'justify-end' : 'justify-start'}`}
                         >
                           <div
-                            className={`max-w-[82%] rounded-lg px-3 py-2 ${
-                              mine ? 'bg-blue-600 text-white' : 'bg-gray-900 text-gray-100 border border-white/10'
+                            className={`max-w-[82%] rounded-2xl px-3 py-2 ${
+                              mine
+                                ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30'
+                                : 'border border-white/10 bg-slate-900 text-slate-100'
                             }`}
                           >
-                            <p className="text-[11px] opacity-80 mb-0.5">
+                            <p className="mb-0.5 text-[11px] opacity-80">
                               {mine ? '나' : profile?.username || '상대방'}
                             </p>
                             <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
@@ -360,7 +320,7 @@ export function ChatPageClient() {
                       );
                     })
                   ) : (
-                    <p className="py-10 text-center text-sm text-gray-500">
+                    <p className="py-10 text-center text-sm text-slate-500">
                       {chatSearchQuery ? '검색된 메시지가 없습니다.' : '아직 메시지가 없습니다.'}
                     </p>
                   )}
@@ -373,7 +333,7 @@ export function ChatPageClient() {
                 />
               </>
             ) : (
-              <div className="flex-1 flex items-center justify-center text-sm text-gray-500">
+              <div className="flex-1 flex items-center justify-center text-sm text-slate-500">
                 채팅방을 선택해주세요.
               </div>
             )}
@@ -381,14 +341,16 @@ export function ChatPageClient() {
         </main>
       ) : (
         <main className="px-4 py-16 text-center space-y-3 animate-imfencer-fade-up">
-          <p className="text-lg font-semibold text-white">아직 채팅방이 없습니다.</p>
-          <p className="text-sm text-gray-400">커뮤니티, 마켓, 펜싱 메뉴의 채팅 버튼으로 대화를 시작할 수 있습니다.</p>
-          <Link
-            href="/fencing"
-            className="inline-flex items-center justify-center rounded-md bg-blue-600 hover:bg-blue-700 px-4 py-2 text-sm font-medium text-white"
-          >
-            펜싱 메뉴 보기
-          </Link>
+          <div className="imf-panel py-10">
+            <p className="text-lg font-semibold text-white">아직 채팅방이 없습니다.</p>
+            <p className="mt-1 text-sm text-slate-400">커뮤니티, 마켓, 펜싱 메뉴의 채팅 버튼으로 대화를 시작할 수 있습니다.</p>
+            <Link
+              href="/fencing"
+              className="mt-3 inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500"
+            >
+              펜싱 메뉴 보기
+            </Link>
+          </div>
         </main>
       )}
     </div>

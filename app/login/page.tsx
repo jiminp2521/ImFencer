@@ -122,37 +122,39 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-black">
-      <div className="mb-12 flex flex-col items-center gap-6">
-        <div className="relative w-48 h-16">
-          <img src="/app-logo.png" alt="ImFencer Logo" className="object-contain w-full h-full" />
+    <div className="imf-page flex min-h-screen flex-col items-center justify-center p-4">
+      <div className="mb-10 flex flex-col items-center gap-5">
+        <div className="imf-panel flex h-18 w-56 items-center justify-center p-3">
+          <div className="relative h-12 w-44">
+            <img src="/app-logo.png" alt="ImFencer Logo" className="h-full w-full object-contain" />
+          </div>
         </div>
-        <p className="text-gray-400 text-sm">프리미엄 펜싱 커뮤니티에 오신 것을 환영합니다</p>
+        <p className="text-sm text-slate-300">프리미엄 펜싱 커뮤니티에 오신 것을 환영합니다</p>
       </div>
 
-      <Card className="w-full max-w-sm p-6 bg-gray-900 border-gray-800 space-y-6">
+      <Card className="imf-panel w-full max-w-sm space-y-6 p-6">
         {deletedAccount ? (
-          <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
+          <div className="rounded-xl border border-emerald-400/25 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-100">
             계정이 삭제되었습니다. 다시 이용하려면 새로 가입해주세요.
           </div>
         ) : null}
 
         {oauthError ? (
-          <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-200">
+          <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-100">
             소셜 로그인에 실패했습니다: {oauthError}
           </div>
         ) : null}
 
         <SocialLogin mode="login" />
 
-        <div className="border-t border-gray-800 pt-4 space-y-2">
-          <p className="text-xs text-gray-500">테스트 로그인</p>
+        <div className="space-y-2 border-t border-white/10 pt-4">
+          <p className="text-xs text-slate-400">테스트 로그인</p>
           {TEST_ACCOUNTS.map((account) => (
             <Button
               key={account.key}
               type="button"
               variant="outline"
-              className="w-full border-gray-700 bg-gray-950 text-gray-200 hover:bg-gray-800"
+              className="h-11 w-full rounded-xl border-slate-600 bg-slate-900 text-slate-100 hover:bg-slate-800"
               onClick={() => {
                 void loginWithTestAccount(account);
               }}

@@ -138,10 +138,10 @@ export async function ProfileScreen({
   const posts = (postsResult.data || []) as PostRow[];
 
   return (
-    <div className="pb-20">
+    <div className="imf-page">
       {headerVariant === 'app' ? (
-        <header className="sticky top-0 z-40 border-b border-white/10 bg-gradient-to-b from-black via-black/95 to-black/80 backdrop-blur-xl px-4 h-14 flex items-center justify-between">
-          <div className="relative w-32 h-8">
+        <header className="imf-topbar">
+          <div className="imf-logo">
             <img src="/app-logo.png" alt="ImFencer" className="object-contain w-full h-full object-left" />
           </div>
           <div className="flex items-center gap-2">
@@ -170,9 +170,9 @@ export async function ProfileScreen({
         </header>
       )}
 
-      <main className="p-4 space-y-6">
-        <section className="flex items-center gap-4">
-          <Avatar className="h-20 w-20 border-2 border-white/10">
+      <main className="p-4 space-y-4">
+        <section className="imf-panel flex items-center gap-4">
+          <Avatar className="h-20 w-20 border-2 border-white/20">
             <AvatarImage src={profile.avatar_url || undefined} />
             <AvatarFallback>{displayName.slice(0, 2).toUpperCase()}</AvatarFallback>
           </Avatar>
@@ -187,7 +187,7 @@ export async function ProfileScreen({
                 <Badge className="border-white/10 bg-gray-900 text-gray-300">{weaponLabel}</Badge>
               ) : null}
             </div>
-            <p className="text-sm text-gray-400">{bio}</p>
+            <p className="text-sm text-slate-400">{bio}</p>
             {!isOwner ? (
               <div className="pt-1">
                 <StartChatButton
@@ -198,7 +198,7 @@ export async function ProfileScreen({
                   label="채팅하기"
                   size="sm"
                   variant="outline"
-                  className="border-gray-700 bg-gray-900 text-gray-200 hover:bg-gray-800"
+                  className="border-slate-600 bg-slate-900 text-slate-200 hover:bg-slate-800"
                 />
               </div>
             ) : null}
@@ -206,24 +206,24 @@ export async function ProfileScreen({
         </section>
 
         <section className="grid grid-cols-3 gap-3">
-          <Card className="bg-gray-900 border-gray-800 p-3 text-center">
+          <Card className="imf-panel p-3 text-center">
             <div className="text-xl font-bold text-white">{postCount}</div>
-            <div className="text-xs text-gray-500">게시글</div>
+            <div className="text-xs text-slate-400">게시글</div>
           </Card>
-          <Card className="bg-gray-900 border-gray-800 p-3 text-center">
+          <Card className="imf-panel p-3 text-center">
             <div className="text-xl font-bold text-white">{receivedLikeCount}</div>
-            <div className="text-xs text-gray-500">받은 좋아요</div>
+            <div className="text-xs text-slate-400">받은 좋아요</div>
           </Card>
-          <Card className="bg-gray-900 border-gray-800 p-3 text-center">
+          <Card className="imf-panel p-3 text-center">
             <div className="text-xl font-bold text-white">{awardCount}</div>
-            <div className="text-xs text-gray-500">수상 인증</div>
+            <div className="text-xs text-slate-400">수상 인증</div>
           </Card>
         </section>
 
         <section className="space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold text-white">게시물</h3>
-            <span className="text-xs text-gray-500">{posts.length}개 표시</span>
+            <span className="text-xs text-slate-400">{posts.length}개 표시</span>
           </div>
           {posts.length > 0 ? (
             <div className="space-y-2">
@@ -231,9 +231,9 @@ export async function ProfileScreen({
                 <Link
                   key={post.id}
                   href={`/posts/${post.id}`}
-                  className="block rounded-lg border border-white/10 bg-gray-950 px-3 py-2.5 hover:bg-gray-900/70 transition-colors"
+                  className="imf-panel block px-3 py-2.5 transition-colors hover:border-blue-400/35"
                 >
-                  <div className="flex items-center gap-2 text-[11px] text-gray-500">
+                  <div className="flex items-center gap-2 text-[11px] text-slate-500">
                     <span>{categoryMap[post.category] || post.category}</span>
                     <span>•</span>
                     <span>
@@ -243,12 +243,12 @@ export async function ProfileScreen({
                       })}
                     </span>
                   </div>
-                  <p className="mt-1 text-sm font-medium text-gray-100 line-clamp-1">{post.title}</p>
+                  <p className="mt-1 text-sm font-medium text-slate-100 line-clamp-1">{post.title}</p>
                 </Link>
               ))}
             </div>
           ) : (
-            <Card className="bg-gray-950 border-gray-800 p-4 text-center text-sm text-gray-500">
+            <Card className="imf-panel p-4 text-center text-sm text-slate-400">
               아직 작성한 게시글이 없습니다.
             </Card>
           )}

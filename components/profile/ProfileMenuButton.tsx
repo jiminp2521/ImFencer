@@ -80,7 +80,7 @@ export function ProfileMenuButton({ userId, username }: ProfileMenuButtonProps) 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button type="button" variant="ghost" size="icon" className="text-gray-200 hover:bg-white/5">
+        <Button type="button" variant="ghost" size="icon" className="imf-icon-button h-9 w-9">
           <Settings className="h-5 w-5" />
           <span className="sr-only">설정</span>
         </Button>

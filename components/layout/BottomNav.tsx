@@ -110,7 +110,7 @@ export function BottomNav() {
     }
 
     return (
-        <nav className="app-bottom-nav fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-gradient-to-t from-black via-black to-black/95 backdrop-blur-xl">
+        <nav className="app-bottom-nav fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-[linear-gradient(180deg,rgba(2,8,23,0.7)_0%,rgba(2,10,28,0.96)_18%,rgba(2,10,28,0.98)_100%)] backdrop-blur-2xl shadow-[0_-14px_36px_rgba(0,0,0,0.42)]">
             <div className="flex h-16 items-center justify-around gap-1 px-2">
                 {tabs.map((tab) => {
                     const isActive =
@@ -137,10 +137,10 @@ export function BottomNav() {
                                 warmTabData(tab.href);
                             }}
                             className={cn(
-                                'flex min-w-[58px] flex-col items-center justify-center gap-1 rounded-xl px-2 py-1.5 transition-colors duration-200',
+                                'flex min-w-[58px] flex-col items-center justify-center gap-1 rounded-2xl px-2 py-1.5 transition-colors duration-200',
                                 isActive
-                                    ? 'bg-blue-500/15 text-blue-400'
-                                    : 'text-gray-500 hover:bg-white/5 hover:text-gray-300'
+                                    ? 'bg-blue-500/20 text-blue-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]'
+                                    : 'text-slate-500 hover:bg-white/5 hover:text-slate-200'
                             )}
                         >
                             <Icon className={cn("h-6 w-6", isActive && "fill-current")} strokeWidth={isActive ? 2.5 : 2} />
