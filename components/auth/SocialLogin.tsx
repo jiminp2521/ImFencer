@@ -41,6 +41,8 @@ export function SocialLogin({ mode = 'login' }: SocialLoginProps) {
 
         const scopes = provider === 'google'
             ? 'openid email profile'
+            : provider === 'kakao'
+                ? 'profile_nickname'
             : provider === 'apple'
                 ? 'email name'
                 : undefined;
