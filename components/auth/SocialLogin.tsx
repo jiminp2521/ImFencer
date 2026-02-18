@@ -50,14 +50,27 @@ export function SocialLogin({ mode = 'login' }: SocialLoginProps) {
             : undefined;
 
         try {
+            const options: {
+                redirectTo: string;
+                skipBrowserRedirect: boolean;
+                scopes?: string;
+                queryParams?: Record<string, string>;
+            } = {
+                redirectTo,
+                skipBrowserRedirect: isNative,
+            };
+
+            if (scopes) {
+                options.scopes = scopes;
+            }
+
+            if (queryParams) {
+                options.queryParams = queryParams;
+            }
+
             const { data, error } = await supabase.auth.signInWithOAuth({
                 provider,
-                options: {
-                    redirectTo,
-                    skipBrowserRedirect: isNative,
-                    scopes,
-                    queryParams,
-                },
+                options,
             });
 
             if (error) {
@@ -83,8 +96,8 @@ export function SocialLogin({ mode = 'login' }: SocialLoginProps) {
     };
 
     const isSignup = mode === 'signup';
-    const actionText = isSignup ? '회원가입하기' : '로그인하기';
-    const appleText = isSignup ? 'Apple로 등록' : 'Apple로 로그인';
+    const actionText = isSignup ? '가입' : '로그인';
+    const appleText = `Apple로 ${actionText}`;
     const pendingText = pendingProvider ? '로그인 중...' : null;
 
     return (
