@@ -56,8 +56,8 @@ const statusLabelMap: Record<string, string> = {
 };
 
 const statusStyleMap: Record<string, string> = {
-  selling: 'border-emerald-400/40 bg-emerald-500/15 text-emerald-200',
-  reserved: 'border-amber-400/40 bg-amber-500/15 text-amber-200',
+  selling: 'border-white/30 bg-white/10 text-white',
+  reserved: 'border-slate-500 bg-slate-700/40 text-slate-100',
   sold: 'border-slate-600 bg-slate-700/60 text-slate-200',
 };
 
@@ -198,7 +198,7 @@ export function MarketPageClient() {
         <div className="imf-panel p-3">
           <div className="mb-2 flex items-center justify-between gap-2">
             <p className="text-xs text-slate-400">장비/용품 거래</p>
-            <Button asChild size="sm" className="h-8 rounded-full bg-blue-600 px-3 text-xs text-white hover:bg-blue-500">
+            <Button asChild size="sm" className="h-8 rounded-full bg-white px-3 text-xs text-black hover:bg-slate-200">
               <Link href="/market/write" prefetch={false}>판매글 등록</Link>
             </Button>
           </div>
@@ -248,11 +248,11 @@ export function MarketPageClient() {
               name="q"
               defaultValue={searchText}
               placeholder="상품명/브랜드 검색"
-              className="h-9 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-blue-500/70"
+              className="h-9 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-white/70"
             />
             <Button
               type="submit"
-              className="h-9 rounded-xl bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-500"
+              className="h-9 rounded-xl bg-white px-3 text-xs font-semibold text-black hover:bg-slate-200"
             >
               검색
             </Button>
@@ -300,7 +300,7 @@ export function MarketPageClient() {
                   key={item.id}
                   href={`/market/${item.id}`}
                   prefetch={false}
-                  className="imf-panel block p-4 transition-colors hover:border-blue-400/35"
+                  className="imf-panel block p-4 transition-colors hover:border-white/35"
                 >
                   <div className="flex gap-3">
                     {item.image_url ? (
@@ -321,7 +321,7 @@ export function MarketPageClient() {
                         <Badge className={`border ${statusClass}`}>{statusLabelMap[item.status] || item.status}</Badge>
                       </div>
 
-                      <p className="text-base font-extrabold text-blue-300">{item.price.toLocaleString('ko-KR')}원</p>
+                      <p className="text-base font-extrabold text-white">{item.price.toLocaleString('ko-KR')}원</p>
 
                       <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-400">
                         {item.weapon_type && <span>{weaponLabelMap[item.weapon_type] || item.weapon_type}</span>}

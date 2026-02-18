@@ -95,7 +95,7 @@ export function ProfileMenuButton({ userId, username }: ProfileMenuButtonProps) 
         <div className="px-4 pt-2 space-y-2">
           <Link href="/activity" onClick={close} className={itemClass}>
             <span className="flex items-center gap-2">
-              <CalendarClock className="h-4 w-4 text-blue-300" />
+              <CalendarClock className="h-4 w-4 text-slate-300" />
               신청/예약 관리
             </span>
             <span className="text-xs text-gray-500">보기</span>
@@ -103,7 +103,7 @@ export function ProfileMenuButton({ userId, username }: ProfileMenuButtonProps) 
 
           <Link href="/notifications" onClick={close} className={itemClass}>
             <span className="flex items-center gap-2">
-              <Bell className="h-4 w-4 text-amber-300" />
+              <Bell className="h-4 w-4 text-slate-300" />
               알림함
             </span>
             <span className="text-xs text-gray-500">보기</span>
@@ -111,7 +111,7 @@ export function ProfileMenuButton({ userId, username }: ProfileMenuButtonProps) 
 
           <Link href="/profile/posts" onClick={close} className={itemClass}>
             <span className="flex items-center gap-2">
-              <FileText className="h-4 w-4 text-emerald-300" />
+              <FileText className="h-4 w-4 text-slate-300" />
               내가 쓴 글
             </span>
             <span className="text-xs text-gray-500">보기</span>
@@ -119,7 +119,7 @@ export function ProfileMenuButton({ userId, username }: ProfileMenuButtonProps) 
 
           <Link href="/profile/bookmarks" onClick={close} className={itemClass}>
             <span className="flex items-center gap-2">
-              <Bookmark className="h-4 w-4 text-purple-300" />
+              <Bookmark className="h-4 w-4 text-slate-300" />
               북마크
             </span>
             <span className="text-xs text-gray-500">보기</span>
@@ -127,7 +127,7 @@ export function ProfileMenuButton({ userId, username }: ProfileMenuButtonProps) 
 
           <Link href="/admin/platform-settings" onClick={close} className={itemClass}>
             <span className="flex items-center gap-2">
-              <Shield className="h-4 w-4 text-cyan-300" />
+              <Shield className="h-4 w-4 text-slate-300" />
               플랫폼 수수료
             </span>
             <span className="text-xs text-gray-500">관리</span>

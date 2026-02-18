@@ -134,7 +134,7 @@ export default function LoginPage() {
 
       <Card className="imf-panel w-full max-w-sm space-y-6 p-6">
         {deletedAccount ? (
-          <div className="rounded-xl border border-emerald-400/25 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-100">
+          <div className="rounded-xl border border-white/20 bg-white/5 px-3 py-2 text-xs text-slate-200">
             계정이 삭제되었습니다. 다시 이용하려면 새로 가입해주세요.
           </div>
         ) : null}

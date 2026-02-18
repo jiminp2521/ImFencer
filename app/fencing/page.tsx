@@ -40,7 +40,7 @@ export default async function FencingPage() {
 
       <main className="px-4 py-5 space-y-4">
         <section className="flex justify-end">
-          <Button asChild size="sm" className="h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-3 text-xs">
+          <Button asChild size="sm" className="h-8 rounded-full bg-white px-3 text-xs text-black hover:bg-slate-200">
             <Link href="/fencing/lessons/write">레슨 등록</Link>
           </Button>
         </section>
@@ -57,7 +57,7 @@ export default async function FencingPage() {
             <Link
               key={item.href}
               href={item.href}
-              className="imf-panel block px-4 py-3 transition-colors hover:border-blue-400/35"
+              className="imf-panel block px-4 py-3 transition-colors hover:border-white/35"
             >
               <div className="flex items-center justify-between gap-3">
                 <div className="space-y-1">

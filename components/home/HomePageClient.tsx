@@ -217,7 +217,7 @@ export function HomePageClient() {
                   prefetch={false}
                   className={`block rounded-lg px-3 py-2 text-sm transition-colors ${
                     selectedSort === filter.value
-                      ? 'bg-blue-500/20 text-blue-200'
+                      ? 'bg-white text-black'
                       : 'text-slate-300 hover:bg-white/5'
                   }`}
                 >
@@ -256,11 +256,11 @@ export function HomePageClient() {
               name="q"
               defaultValue={searchText}
               placeholder="게시글 검색"
-              className="h-9 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-blue-500/70"
+              className="h-9 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-white/70"
             />
             <button
               type="submit"
-              className="h-9 rounded-xl bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-500"
+              className="h-9 rounded-xl bg-white px-3 text-xs font-semibold text-black hover:bg-slate-200"
             >
               검색
             </button>
@@ -327,7 +327,7 @@ export function HomePageClient() {
                 <p className="font-semibold text-white">내 클럽 커뮤니티는 로그인 후 이용할 수 있습니다.</p>
                 <Link
                   href="/login?next=%2F%3Fscope%3Dclub"
-                  className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-500"
+                  className="inline-flex items-center justify-center rounded-xl bg-white px-4 py-2 text-sm text-black hover:bg-slate-200"
                 >
                   로그인
                 </Link>
@@ -337,7 +337,7 @@ export function HomePageClient() {
                 <p className="font-semibold text-white">내 종목 커뮤니티는 로그인 후 종목 설정이 필요합니다.</p>
                 <Link
                   href="/login?next=%2Fsignup%2Fprofile"
-                  className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-500"
+                  className="inline-flex items-center justify-center rounded-xl bg-white px-4 py-2 text-sm text-black hover:bg-slate-200"
                 >
                   종목 설정하기
                 </Link>

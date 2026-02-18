@@ -231,7 +231,7 @@ export async function ProfileScreen({
                 <Link
                   key={post.id}
                   href={`/posts/${post.id}`}
-                  className="imf-panel block px-3 py-2.5 transition-colors hover:border-blue-400/35"
+                  className="imf-panel block px-3 py-2.5 transition-colors hover:border-white/35"
                 >
                   <div className="flex items-center gap-2 text-[11px] text-slate-500">
                     <span>{categoryMap[post.category] || post.category}</span>

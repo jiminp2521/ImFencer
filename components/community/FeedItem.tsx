@@ -50,7 +50,7 @@ export const FeedItem = memo(function FeedItem({
         <Link
             href={`/posts/${id}`}
             prefetch={false}
-            className="imf-panel block p-4 transition-colors hover:border-blue-400/30 hover:bg-slate-900/75 active:scale-[0.997] [content-visibility:auto] [contain-intrinsic-size:220px]"
+            className="imf-panel block p-4 transition-colors hover:border-white/30 hover:bg-slate-900/75 active:scale-[0.997] [content-visibility:auto] [contain-intrinsic-size:220px]"
         >
             <div className="flex gap-3">
                 <div className="flex-1 space-y-2">
@@ -81,7 +81,7 @@ export const FeedItem = memo(function FeedItem({
                     {tags && tags.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-2">
                             {tags.map((tag) => (
-                                <span key={tag} className="rounded-md bg-blue-500/10 px-1.5 py-0.5 text-[10px] text-blue-300">
+                                <span key={tag} className="rounded-md bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-300">
                                     #{tag}
                                 </span>
                             ))}

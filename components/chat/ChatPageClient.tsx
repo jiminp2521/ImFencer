@@ -149,7 +149,7 @@ export function ChatPageClient() {
             <p className="mt-1 text-sm text-slate-400">커뮤니티/마켓/펜싱 메뉴에서 문의를 보내면 채팅방이 생성됩니다.</p>
             <Link
               href="/login?next=/chat"
-              className="mt-3 inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500"
+              className="mt-3 inline-flex items-center justify-center rounded-xl bg-white px-4 py-2 text-sm font-medium text-black hover:bg-slate-200"
             >
               로그인
             </Link>
@@ -205,11 +205,11 @@ export function ChatPageClient() {
               name="q"
               defaultValue={chatSearchQuery}
               placeholder="상대 닉네임 또는 대화 내용 검색"
-              className="h-9 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-blue-500/70"
+              className="h-9 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-white/70"
             />
             <button
               type="submit"
-              className="inline-flex h-9 items-center justify-center rounded-xl bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-500"
+              className="inline-flex h-9 items-center justify-center rounded-xl bg-white px-3 text-xs font-semibold text-black hover:bg-slate-200"
             >
               검색
             </button>
@@ -237,14 +237,14 @@ export function ChatPageClient() {
                   href={chatSearchQuery ? `/chat?chat=${chat.id}&q=${encodeURIComponent(chatSearchQuery)}` : `/chat?chat=${chat.id}`}
                   prefetch={false}
                   className={`block border-b border-white/10 px-4 py-3 transition-colors ${
-                    isActive ? 'bg-blue-500/15' : 'hover:bg-white/5'
+                    isActive ? 'bg-white/10' : 'hover:bg-white/5'
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-sm font-semibold text-white">{partnerMap[chat.id] || '채팅방'}</p>
                     <div className="flex items-center gap-2">
                       {unreadCountMap[chat.id] ? (
-                        <span className="inline-flex min-w-5 h-5 px-1.5 items-center justify-center rounded-full bg-orange-500 text-[10px] font-semibold text-white">
+                        <span className="inline-flex min-w-5 h-5 px-1.5 items-center justify-center rounded-full bg-white text-[10px] font-semibold text-black">
                           {unreadCountMap[chat.id]}
                         </span>
                       ) : null}
@@ -293,7 +293,7 @@ export function ChatPageClient() {
                           <div
                             className={`max-w-[82%] rounded-2xl px-3 py-2 ${
                               mine
-                                ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30'
+                                ? 'bg-white text-black'
                                 : 'border border-white/10 bg-slate-900 text-slate-100'
                             }`}
                           >
@@ -346,7 +346,7 @@ export function ChatPageClient() {
             <p className="mt-1 text-sm text-slate-400">커뮤니티, 마켓, 펜싱 메뉴의 채팅 버튼으로 대화를 시작할 수 있습니다.</p>
             <Link
               href="/fencing"
-              className="mt-3 inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500"
+              className="mt-3 inline-flex items-center justify-center rounded-xl bg-white px-4 py-2 text-sm font-medium text-black hover:bg-slate-200"
             >
               펜싱 메뉴 보기
             </Link>

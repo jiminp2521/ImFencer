@@ -53,67 +53,67 @@
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
   --safe-area-left: env(safe-area-inset-left, 0px);
   --safe-area-right: env(safe-area-inset-right, 0px);
-  --background: oklch(0.16 0.03 257);
+  --background: oklch(0 0 0);
   --foreground: oklch(0.985 0 0);
-  --card: oklch(0.2 0.03 257);
+  --card: oklch(0.16 0 0);
   --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.2 0.03 257);
+  --popover: oklch(0.16 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.65 0.18 254);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.25 0.02 257);
+  --primary: oklch(0.985 0 0);
+  --primary-foreground: oklch(0 0 0);
+  --secondary: oklch(0.22 0 0);
   --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.24 0.02 257);
+  --muted: oklch(0.22 0 0);
   --muted-foreground: oklch(0.70 0 0);
-  --accent: oklch(0.24 0.02 257);
+  --accent: oklch(0.22 0 0);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.6 0.25 25);
-  --border: oklch(0.34 0.02 257);
-  --input: oklch(0.25 0.02 257);
-  --ring: oklch(0.65 0.18 254);
-  --chart-1: oklch(0.65 0.18 254);
-  --chart-2: oklch(0.7 0.16 220);
-  --chart-3: oklch(0.72 0.18 190);
-  --chart-4: oklch(0.68 0.18 165);
-  --chart-5: oklch(0.74 0.17 145);
-  --sidebar: oklch(0.2 0.03 257);
+  --border: oklch(0.30 0 0);
+  --input: oklch(0.22 0 0);
+  --ring: oklch(0.80 0 0);
+  --chart-1: oklch(0.8 0 0);
+  --chart-2: oklch(0.7 0 0);
+  --chart-3: oklch(0.6 0 0);
+  --chart-4: oklch(0.5 0 0);
+  --chart-5: oklch(0.4 0 0);
+  --sidebar: oklch(0.14 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.65 0.18 254);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.24 0.02 257);
+  --sidebar-primary: oklch(0.985 0 0);
+  --sidebar-primary-foreground: oklch(0 0 0);
+  --sidebar-accent: oklch(0.22 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.34 0.02 257);
-  --sidebar-ring: oklch(0.65 0.18 254);
+  --sidebar-border: oklch(0.30 0 0);
+  --sidebar-ring: oklch(0.80 0 0);
 }
 
 /* Ensure these are the same for .dark just in case */
 .dark {
-  --background: oklch(0.16 0.03 257);
+  --background: oklch(0 0 0);
   --foreground: oklch(0.985 0 0);
-  --card: oklch(0.2 0.03 257);
+  --card: oklch(0.16 0 0);
   --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.2 0.03 257);
+  --popover: oklch(0.16 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.65 0.18 254);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.25 0.02 257);
+  --primary: oklch(0.985 0 0);
+  --primary-foreground: oklch(0 0 0);
+  --secondary: oklch(0.22 0 0);
   --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.24 0.02 257);
+  --muted: oklch(0.22 0 0);
   --muted-foreground: oklch(0.70 0 0);
-  --accent: oklch(0.24 0.02 257);
+  --accent: oklch(0.22 0 0);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.6 0.25 25);
-  --border: oklch(0.34 0.02 257);
-  --input: oklch(0.25 0.02 257);
-  --ring: oklch(0.65 0.18 254);
-  --sidebar: oklch(0.2 0.03 257);
+  --border: oklch(0.30 0 0);
+  --input: oklch(0.22 0 0);
+  --ring: oklch(0.80 0 0);
+  --sidebar: oklch(0.14 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.65 0.18 254);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.24 0.02 257);
+  --sidebar-primary: oklch(0.985 0 0);
+  --sidebar-primary-foreground: oklch(0 0 0);
+  --sidebar-accent: oklch(0.22 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.34 0.02 257);
-  --sidebar-ring: oklch(0.65 0.18 254);
+  --sidebar-border: oklch(0.30 0 0);
+  --sidebar-ring: oklch(0.80 0 0);
 }
 
 @layer base {
@@ -127,10 +127,7 @@
   }
   body {
     @apply bg-background text-foreground;
-    background-image:
-      radial-gradient(circle at 20% -10%, rgba(59, 130, 246, 0.26) 0%, rgba(0, 0, 0, 0) 32%),
-      radial-gradient(circle at 80% -20%, rgba(14, 165, 233, 0.2) 0%, rgba(0, 0, 0, 0) 36%),
-      linear-gradient(180deg, #020617 0%, #000813 100%);
+    background-image: linear-gradient(180deg, #000000 0%, #050505 100%);
     background-attachment: fixed;
   }
   a,
@@ -142,15 +139,12 @@
 @layer components {
   .imf-page {
     @apply min-h-screen pb-20 text-white;
-    background-image:
-      radial-gradient(circle at 20% -12%, rgba(56, 189, 248, 0.2) 0%, rgba(2, 8, 23, 0) 36%),
-      radial-gradient(circle at 85% 4%, rgba(59, 130, 246, 0.18) 0%, rgba(2, 8, 23, 0) 30%),
-      linear-gradient(180deg, #020617 0%, #000814 100%);
+    background-image: linear-gradient(180deg, #000000 0%, #060606 100%);
   }
 
   .imf-topbar {
     @apply sticky top-0 z-40 flex h-14 items-center justify-between border-b border-white/10 px-4 backdrop-blur-xl;
-    background: linear-gradient(180deg, rgba(2, 8, 23, 0.96) 0%, rgba(2, 10, 28, 0.85) 100%);
+    background: rgba(0, 0, 0, 0.82);
   }
 
   .imf-logo {
@@ -159,21 +153,17 @@
 
   .imf-icon-button {
     @apply inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-600/60 text-slate-200 transition-colors;
-    background: linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(15, 23, 42, 0.75) 100%);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    background: rgba(9, 9, 9, 0.92);
   }
 
   .imf-icon-button:hover {
-    @apply border-blue-400/40 text-white;
-    background: linear-gradient(180deg, rgba(30, 41, 59, 0.98) 0%, rgba(15, 23, 42, 0.9) 100%);
+    @apply border-slate-400 text-white;
+    background: rgba(17, 17, 17, 0.96);
   }
 
   .imf-panel {
     @apply rounded-2xl border border-white/10 p-3;
-    background: linear-gradient(180deg, rgba(10, 20, 40, 0.86) 0%, rgba(3, 10, 23, 0.94) 100%);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.06),
-      0 8px 26px rgba(0, 0, 0, 0.32);
+    background: rgba(9, 9, 9, 0.92);
   }
 
   .imf-chip {
@@ -185,8 +175,7 @@
   }
 
   .imf-chip-active {
-    @apply border-blue-300/60 bg-blue-500/20 text-white;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    @apply border-white bg-white text-black;
   }
 
   .imf-pill {
