@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
@@ -17,10 +17,22 @@ export default function ProfileSetupPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const router = useRouter();
-    const supabase = useMemo(() => createClient(), []);
+
+    const createSupabaseSafely = () => {
+        try {
+            return createClient();
+        } catch (clientError) {
+            console.error('Supabase client init failed on profile setup:', clientError);
+            setError('프로필 설정을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
+            return null;
+        }
+    };
 
     useEffect(() => {
         const checkUser = async () => {
+            const supabase = createSupabaseSafely();
+            if (!supabase) return;
+
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) {
                 router.replace('/login');
@@ -55,7 +67,7 @@ export default function ProfileSetupPage() {
             setClubs(clubRows || []);
         };
         checkUser();
-    }, [router, supabase]);
+    }, [router]);
 
     const handleProfileSetup = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -65,6 +77,12 @@ export default function ProfileSetupPage() {
 
         if (trimmedUsername.length < 3) {
             setError('닉네임은 3자 이상이어야 합니다.');
+            setLoading(false);
+            return;
+        }
+
+        const supabase = createSupabaseSafely();
+        if (!supabase) {
             setLoading(false);
             return;
         }

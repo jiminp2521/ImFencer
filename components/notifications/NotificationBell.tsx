@@ -1,18 +1,25 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Bell } from 'lucide-react';
 import { createClient } from '@/lib/supabase';
 
 export function NotificationBell() {
-  const supabase = useMemo(() => createClient(), []);
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
 
     const load = async () => {
+      let supabase;
+      try {
+        supabase = createClient();
+      } catch (error) {
+        console.error('Supabase client init failed in NotificationBell:', error);
+        return;
+      }
+
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -37,7 +44,7 @@ export function NotificationBell() {
     return () => {
       cancelled = true;
     };
-  }, [supabase]);
+  }, []);
 
   return (
     <Link

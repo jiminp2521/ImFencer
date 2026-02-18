@@ -16,7 +16,6 @@ type MarketWriteFormProps = {
 
 export function MarketWriteForm({ editId }: MarketWriteFormProps) {
   const router = useRouter();
-  const supabase = useMemo(() => createClient(), []);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -124,6 +123,15 @@ export function MarketWriteForm({ editId }: MarketWriteFormProps) {
       }
 
       if (imageFile) {
+        let supabase;
+        try {
+          supabase = createClient();
+        } catch (clientError) {
+          console.error('Supabase client init failed in MarketWriteForm:', clientError);
+          alert('이미지 업로드 설정이 올바르지 않습니다. 잠시 후 다시 시도해주세요.');
+          return;
+        }
+
         const extension = imageFile.name.includes('.') ? imageFile.name.split('.').pop() : 'jpg';
         const safeExtension = extension ? extension.toLowerCase() : 'jpg';
         const filePath = `market/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${safeExtension}`;

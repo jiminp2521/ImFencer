@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 
@@ -15,11 +15,18 @@ type MessageRow = {
 
 export function ChatRealtimeSync({ chatIds, onMessage }: ChatRealtimeSyncProps) {
   const router = useRouter();
-  const supabase = useMemo(() => createClient(), []);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (chatIds.length === 0) return;
+
+    let supabase;
+    try {
+      supabase = createClient();
+    } catch (error) {
+      console.error('Supabase client init failed in ChatRealtimeSync:', error);
+      return;
+    }
 
     const chatIdSet = new Set(chatIds);
     const scheduleRefresh = () => {
@@ -60,7 +67,7 @@ export function ChatRealtimeSync({ chatIds, onMessage }: ChatRealtimeSyncProps) 
 
       supabase.removeChannel(channel);
     };
-  }, [chatIds, onMessage, router, supabase]);
+  }, [chatIds, onMessage, router]);
 
   return null;
 }
