@@ -142,7 +142,7 @@ export default function LoginPage() {
             />
           </div>
         </div>
-        <p className="text-sm text-slate-300">프리미엄 펜싱 커뮤니티에 오신 것을 환영합니다</p>
+        <p className="text-sm text-slate-300">소셜 계정으로 로그인</p>
       </div>
 
       <Card className="imf-panel w-full max-w-sm space-y-6 p-6">
@@ -190,18 +190,6 @@ export default function LoginPage() {
           </div>
         ) : null}
       </Card>
-
-      <p className="mt-4 text-center text-xs text-slate-500">
-        로그인/가입 시{' '}
-        <Link href="/legal/terms" className="underline underline-offset-2 hover:text-slate-300">
-          이용약관
-        </Link>
-        {' '}및{' '}
-        <Link href="/legal/privacy" className="underline underline-offset-2 hover:text-slate-300">
-          개인정보처리방침
-        </Link>
-        에 동의한 것으로 간주됩니다.
-      </p>
     </div>
   );
 }
