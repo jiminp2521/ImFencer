@@ -29,7 +29,6 @@ type ProfileRow = {
   avatar_url: string | null;
   user_type: string | null;
   club_id: string | null;
-  fencing_clubs: { name: string } | { name: string }[] | null;
 };
 
 type PostRow = {
@@ -68,7 +67,7 @@ export async function ProfileScreen({
   const [profileResult, postsCountResult, likeCountResult, awardsCountResult, postsResult] = await Promise.all([
     supabase
       .from('profiles')
-      .select('username, weapon_type, tier, avatar_url, user_type, club_id, fencing_clubs:club_id (name)')
+      .select('username, weapon_type, tier, avatar_url, user_type, club_id')
       .eq('id', profileUserId)
       .maybeSingle(),
     supabase
@@ -108,6 +107,27 @@ export async function ProfileScreen({
   }
 
   let profile = profileResult.data as ProfileRow | null;
+
+  if (!profile && profileResult.error) {
+    const { data: fallbackProfile, error: fallbackError } = await supabase
+      .from('profiles')
+      .select('username, weapon_type, tier, avatar_url, club_id')
+      .eq('id', profileUserId)
+      .maybeSingle();
+
+    if (fallbackError) {
+      console.error('Error fetching profile (fallback):', fallbackError);
+    } else if (fallbackProfile) {
+      profile = {
+        username: fallbackProfile.username,
+        weapon_type: fallbackProfile.weapon_type,
+        tier: fallbackProfile.tier,
+        avatar_url: fallbackProfile.avatar_url,
+        user_type: null,
+        club_id: fallbackProfile.club_id,
+      };
+    }
+  }
   if (!profile && isOwner) {
     profile = {
       username: null,
@@ -116,7 +136,6 @@ export async function ProfileScreen({
       avatar_url: null,
       user_type: null,
       club_id: null,
-      fencing_clubs: null,
     };
   }
 
@@ -127,8 +146,22 @@ export async function ProfileScreen({
   const displayName = profile.username || 'Fencer';
   const tierLabel = profile.tier || 'Bronze';
   const weaponLabel = profile.weapon_type ? weaponMap[profile.weapon_type] || profile.weapon_type : null;
-  const profileClub = Array.isArray(profile.fencing_clubs) ? profile.fencing_clubs[0] : profile.fencing_clubs;
-  const clubName = profileClub?.name || null;
+  let clubName: string | null = null;
+
+  if (profile.club_id) {
+    const { data: clubData, error: clubError } = await supabase
+      .from('fencing_clubs')
+      .select('name')
+      .eq('id', profile.club_id)
+      .maybeSingle();
+
+    // Ignore invalid UUID when legacy text `club_id` data is present.
+    if (clubError && clubError.code !== '22P02') {
+      console.error('Error fetching profile club:', clubError);
+    } else {
+      clubName = clubData?.name || null;
+    }
+  }
 
   const bioParts = [weaponLabel, profile.user_type || null, clubName].filter(Boolean);
   const bio = bioParts.length > 0 ? bioParts.join(' • ') : '프로필 정보가 없습니다.';
