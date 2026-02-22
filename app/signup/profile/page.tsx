@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
@@ -123,7 +125,14 @@ export default function ProfileSetupPage() {
         <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-black">
             <div className="mb-8 flex flex-col items-center gap-4">
                 <div className="relative w-40 h-12">
-                    <img src="/app-logo.png" alt="ImFencer Logo" className="object-contain w-full h-full" />
+                    <Image
+                        src="/app-logo.png"
+                        alt="ImFencer Logo"
+                        width={160}
+                        height={48}
+                        className="object-contain w-full h-full"
+                        priority
+                    />
                 </div>
                 <p className="text-gray-400 text-sm">필수 정보를 입력해주세요</p>
             </div>
@@ -204,6 +213,14 @@ export default function ProfileSetupPage() {
                         {loading ? '저장하고 시작하기' : '시작하기'}
                     </Button>
                 </form>
+
+                <p className="text-center text-[11px] text-gray-500">
+                    계속 진행하면{' '}
+                    <Link href="/legal/terms" className="underline underline-offset-2 hover:text-gray-300">이용약관</Link>
+                    {' '}및{' '}
+                    <Link href="/legal/privacy" className="underline underline-offset-2 hover:text-gray-300">개인정보처리방침</Link>
+                    에 동의합니다.
+                </p>
             </Card>
         </div>
     );

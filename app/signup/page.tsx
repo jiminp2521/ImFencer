@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { createClient } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -117,7 +118,14 @@ export default function SignUpPage() {
             <div className="mb-8 flex flex-col items-center gap-4">
                 {/* Logo Image */}
                 <div className="relative w-40 h-12">
-                    <img src="/app-logo.png" alt="ImFencer Logo" className="object-contain w-full h-full" />
+                    <Image
+                        src="/app-logo.png"
+                        alt="ImFencer Logo"
+                        width={160}
+                        height={48}
+                        className="object-contain w-full h-full"
+                        priority
+                    />
                 </div>
                 <p className="text-gray-400 text-sm">계정을 생성하고 시작하세요</p>
             </div>
@@ -214,6 +222,14 @@ export default function SignUpPage() {
                 </form>
 
                 <SocialLogin mode="signup" />
+
+                <p className="text-center text-[11px] text-gray-500">
+                    가입 시{' '}
+                    <Link href="/legal/terms" className="underline underline-offset-2 hover:text-gray-300">이용약관</Link>
+                    {' '}및{' '}
+                    <Link href="/legal/privacy" className="underline underline-offset-2 hover:text-gray-300">개인정보처리방침</Link>
+                    에 동의합니다.
+                </p>
             </Card>
         </div>
     );

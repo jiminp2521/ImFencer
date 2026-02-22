@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase-server';
 import { ensureProfileRow } from '@/lib/ensure-profile';
+import { createNotificationAndPush } from '@/lib/notifications';
 
 type RouteContext = {
   params: Promise<{
@@ -96,18 +97,15 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       completed: '완료',
     };
 
-    const { error: notificationError } = await supabase.from('notifications').insert({
-      user_id: typedOrder.buyer_id,
-      actor_id: user.id,
+    await createNotificationAndPush({
+      userId: typedOrder.buyer_id,
+      actorId: user.id,
       type: 'order',
       title: `레슨 신청이 ${statusTextMap[nextStatus]}되었습니다.`,
       body: lessonTitle,
       link: '/activity',
+      dedupeKey: `lesson-order-status:${typedOrder.id}:${nextStatus}`,
     });
-
-    if (notificationError) {
-      console.error('Error creating lesson order status notification:', notificationError);
-    }
 
     return NextResponse.json({ ok: true, status: nextStatus });
   } catch (error) {
@@ -115,4 +113,3 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     return NextResponse.json({ error: 'Failed to update order' }, { status: 500 });
   }
 }
-

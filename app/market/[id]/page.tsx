@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -75,11 +76,16 @@ export default async function MarketDetailPage({ params }: MarketDetailPageProps
 
       <main className="p-4 space-y-4">
         {item.image_url ? (
-          <img
-            src={item.image_url}
-            alt={item.title}
-            className="w-full max-h-96 rounded-xl border border-white/10 object-cover bg-gray-900"
-          />
+          <div className="relative h-96 w-full overflow-hidden rounded-xl border border-white/10 bg-gray-900">
+            <Image
+              src={item.image_url}
+              alt={item.title}
+              fill
+              sizes="(max-width: 768px) 100vw, 720px"
+              unoptimized
+              className="object-cover"
+            />
+          </div>
         ) : (
           <div className="w-full h-52 rounded-xl border border-white/10 bg-gray-900 flex items-center justify-center text-gray-600 text-xs">
             NO IMAGE

@@ -1,30 +1,43 @@
 import { NextResponse } from 'next/server';
 
-export const dynamic = 'force-static';
+const getAppId = () => {
+  const teamId = (process.env.APPLE_TEAM_ID || '').trim();
+  const bundleId = (process.env.IOS_BUNDLE_ID || 'com.imfencer.app').trim();
+
+  if (!teamId) {
+    return bundleId;
+  }
+
+  return `${teamId}.${bundleId}`;
+};
 
 export async function GET() {
-  const teamId = process.env.APPLE_TEAM_ID?.trim();
-  const bundleId = process.env.IOS_BUNDLE_ID?.trim() || 'com.imfencer.app';
-
-  const appId = teamId ? `${teamId}.${bundleId}` : bundleId;
-
-  return NextResponse.json(
-    {
-      applinks: {
-        apps: [],
-        details: [
-          {
-            appID: appId,
-            paths: ['*'],
-          },
-        ],
-      },
+  const appId = getAppId();
+  const body = {
+    applinks: {
+      apps: [],
+      details: [
+        {
+          appIDs: [appId],
+          components: [
+            {
+              '/': '/auth/*',
+            },
+            {
+              '/': '/payments/*',
+            },
+            {
+              '/': '/*',
+            },
+          ],
+        },
+      ],
     },
-    {
-      headers: {
-        'content-type': 'application/json',
-        'cache-control': 'public, max-age=3600',
-      },
-    }
-  );
+  };
+
+  return NextResponse.json(body, {
+    headers: {
+      'Cache-Control': 'public, max-age=300',
+    },
+  });
 }

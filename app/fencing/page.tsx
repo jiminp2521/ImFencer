@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
@@ -33,7 +34,14 @@ export default async function FencingPage() {
     <div className="imf-page">
       <header className="imf-topbar">
         <div className="imf-logo">
-          <img src="/app-logo.png" alt="ImFencer" className="object-contain w-full h-full object-left" />
+          <Image
+            src="/app-logo.png"
+            alt="ImFencer"
+            width={128}
+            height={32}
+            className="object-contain w-full h-full object-left"
+            priority
+          />
         </div>
         <NotificationBell />
       </header>

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -154,7 +155,16 @@ export default async function PostDetailPage({ params }: PostPageProps) {
 
         {post.image_url && (
           <div className="overflow-hidden rounded-lg border border-white/10 bg-black">
-            <img src={post.image_url} alt={post.title} className="w-full max-h-96 object-cover" />
+            <div className="relative h-96 w-full">
+              <Image
+                src={post.image_url}
+                alt={post.title}
+                fill
+                sizes="(max-width: 768px) 100vw, 720px"
+                unoptimized
+                className="object-cover"
+              />
+            </div>
           </div>
         )}
 

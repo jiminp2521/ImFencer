@@ -29,6 +29,8 @@ type MyClassReservationRow = {
   id: string;
   class_id: string;
   status: 'requested' | 'confirmed' | 'cancelled';
+  payment_status: 'pending' | 'paid' | 'failed' | 'cancelled';
+  payment_amount: number;
   created_at: string;
   updated_at: string | null;
   fencing_club_classes: ClassRef | ClassRef[] | null;
@@ -58,6 +60,8 @@ type ReservationManageRow = {
   class_id: string;
   user_id: string;
   status: 'requested' | 'confirmed' | 'cancelled';
+  payment_status: 'pending' | 'paid' | 'failed' | 'cancelled';
+  payment_amount: number;
   created_at: string;
   updated_at: string | null;
 };
@@ -95,6 +99,13 @@ const reservationStatusLabelMap: Record<string, string> = {
   requested: '요청',
   confirmed: '확정',
   cancelled: '취소',
+};
+
+const paymentStatusLabelMap: Record<string, string> = {
+  pending: '결제대기',
+  paid: '결제완료',
+  failed: '결제실패',
+  cancelled: '결제취소',
 };
 
 const orderStatusLabelMap: Record<string, string> = {
@@ -149,6 +160,8 @@ export default async function ActivityPage({ searchParams }: ActivityPageProps) 
         id,
         class_id,
         status,
+        payment_status,
+        payment_amount,
         created_at,
         updated_at,
         fencing_club_classes:class_id (
@@ -229,7 +242,7 @@ export default async function ActivityPage({ searchParams }: ActivityPageProps) 
     managedClassIds.length > 0
       ? supabase
           .from('fencing_class_reservations')
-          .select('id, class_id, user_id, status, created_at, updated_at')
+          .select('id, class_id, user_id, status, payment_status, payment_amount, created_at, updated_at')
           .in('class_id', managedClassIds)
           .order('created_at', { ascending: false })
           .limit(160)
@@ -342,6 +355,16 @@ export default async function ActivityPage({ searchParams }: ActivityPageProps) 
                       <p className="text-xs text-gray-500">
                         {classInfo?.start_at ? `${formatDateTime(classInfo.start_at)} ~ ${formatDateTime(classInfo.end_at)}` : '일정 정보 없음'}
                       </p>
+                      <div className="flex items-center gap-2">
+                        <Badge className={getStatusBadgeClass(item.payment_status)}>
+                          {paymentStatusLabelMap[item.payment_status] || item.payment_status}
+                        </Badge>
+                        {item.payment_amount > 0 ? (
+                          <span className="text-xs text-gray-500">
+                            {item.payment_amount.toLocaleString('ko-KR')}원
+                          </span>
+                        ) : null}
+                      </div>
                       <p className="text-[11px] text-gray-600">신청일: {formatDateTime(item.created_at)}</p>
                     </article>
                   );
@@ -405,6 +428,16 @@ export default async function ActivityPage({ searchParams }: ActivityPageProps) 
                       </Badge>
                     </div>
                     <p className="text-xs text-gray-400">신청자: {buyerMap.get(item.user_id) || '알 수 없음'}</p>
+                    <div className="flex items-center gap-2">
+                      <Badge className={getStatusBadgeClass(item.payment_status)}>
+                        {paymentStatusLabelMap[item.payment_status] || item.payment_status}
+                      </Badge>
+                      {item.payment_amount > 0 ? (
+                        <span className="text-xs text-gray-500">
+                          {item.payment_amount.toLocaleString('ko-KR')}원
+                        </span>
+                      ) : null}
+                    </div>
                     <p className="text-[11px] text-gray-600">요청일: {formatDateTime(item.created_at)}</p>
                     <ClassReservationStatusActions
                       reservationId={item.id}

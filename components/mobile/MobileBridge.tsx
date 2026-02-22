@@ -12,6 +12,7 @@ type ParsedAppUrl =
       kind: 'auth';
       code: string;
       next: string;
+      authMode: 'login' | 'signup';
     }
   | {
       kind: 'path';
@@ -22,6 +23,10 @@ type ParsedAppUrl =
 const normalizePath = (path: string) => {
   if (!path) return '/';
   return path.startsWith('/') ? path : `/${path}`;
+};
+
+const sanitizeAuthMode = (value: string | null): 'login' | 'signup' => {
+  return value === 'signup' ? 'signup' : 'login';
 };
 
 const parseIncomingUrl = (rawUrl: string): ParsedAppUrl => {
@@ -37,8 +42,9 @@ const parseIncomingUrl = (rawUrl: string): ParsedAppUrl => {
       if (mergedPath === '/auth/callback') {
         const code = url.searchParams.get('code') || '';
         const next = url.searchParams.get('next') || '/';
+        const authMode = sanitizeAuthMode(url.searchParams.get('authMode'));
         if (code) {
-          return { kind: 'auth', code, next: normalizePath(next) };
+          return { kind: 'auth', code, next: normalizePath(next), authMode };
         }
       }
 
@@ -52,8 +58,9 @@ const parseIncomingUrl = (rawUrl: string): ParsedAppUrl => {
     if (url.pathname === '/auth/callback') {
       const code = url.searchParams.get('code') || '';
       const next = url.searchParams.get('next') || '/';
+      const authMode = sanitizeAuthMode(url.searchParams.get('authMode'));
       if (code) {
-        return { kind: 'auth', code, next: normalizePath(next) };
+        return { kind: 'auth', code, next: normalizePath(next), authMode };
       }
     }
 
@@ -109,7 +116,12 @@ export function MobileBridge() {
       }
     };
 
-    const handleAuthCode = async (code: string, next: string, closeBrowser: () => Promise<void>) => {
+    const handleAuthCode = async (
+      code: string,
+      next: string,
+      authMode: 'login' | 'signup',
+      closeBrowser: () => Promise<void>
+    ) => {
       try {
         const response = await fetch('/api/auth/exchange-code', {
           method: 'POST',
@@ -119,6 +131,7 @@ export function MobileBridge() {
           body: JSON.stringify({
             code,
             next,
+            authMode,
           }),
         });
 
@@ -181,7 +194,7 @@ export function MobileBridge() {
           if (!parsed) return;
 
           if (parsed.kind === 'auth') {
-            void handleAuthCode(parsed.code, parsed.next, () => Browser.close());
+            void handleAuthCode(parsed.code, parsed.next, parsed.authMode, () => Browser.close());
             return;
           }
 

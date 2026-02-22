@@ -1,0 +1,25 @@
+{
+  "name": "mobile",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "sync": "npx cap sync",
+    "open:ios": "npx cap open ios",
+    "open:android": "npx cap open android",
+    "copy": "npx cap copy"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@capacitor/android": "^8.1.0",
+    "@capacitor/app": "^8.0.1",
+    "@capacitor/browser": "^8.0.1",
+    "@capacitor/cli": "^8.1.0",
+    "@capacitor/core": "^8.1.0",
+    "@capacitor/ios": "^8.1.0",
+    "@capacitor/push-notifications": "^8.0.1"
+  }
+}

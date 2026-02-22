@@ -1,7 +1,9 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { SocialLogin } from '@/components/auth/SocialLogin';
@@ -50,6 +52,10 @@ const sanitizeNext = (value: string | null) => {
   if (value.startsWith('//')) return '/';
   return value;
 };
+
+const isTestLoginEnabled = ['1', 'true'].includes(
+  (process.env.NEXT_PUBLIC_ENABLE_TEST_LOGIN || '').trim().toLowerCase()
+);
 
 export default function LoginPage() {
   const [pendingAccountKey, setPendingAccountKey] = useState<string | null>(null);
@@ -126,7 +132,14 @@ export default function LoginPage() {
       <div className="mb-10 flex flex-col items-center gap-5">
         <div className="imf-panel flex h-18 w-56 items-center justify-center p-3">
           <div className="relative h-12 w-44">
-            <img src="/app-logo.png" alt="ImFencer Logo" className="h-full w-full object-contain" />
+            <Image
+              src="/app-logo.png"
+              alt="ImFencer Logo"
+              width={176}
+              height={48}
+              className="h-full w-full object-contain"
+              priority
+            />
           </div>
         </div>
         <p className="text-sm text-slate-300">프리미엄 펜싱 커뮤니티에 오신 것을 환영합니다</p>
@@ -147,24 +160,48 @@ export default function LoginPage() {
 
         <SocialLogin mode="login" />
 
-        <div className="space-y-2 border-t border-white/10 pt-4">
-          <p className="text-xs text-slate-400">테스트 로그인</p>
-          {TEST_ACCOUNTS.map((account) => (
-            <Button
-              key={account.key}
-              type="button"
-              variant="outline"
-              className="h-11 w-full rounded-xl border-slate-600 bg-slate-900 text-slate-100 hover:bg-slate-800"
-              onClick={() => {
-                void loginWithTestAccount(account);
-              }}
-              disabled={Boolean(pendingAccountKey)}
-            >
-              {pendingAccountKey === account.key ? '로그인 중...' : account.label}
-            </Button>
-          ))}
+        <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-center">
+          <p className="text-xs text-slate-400">아직 회원이 아니신가요?</p>
+          <Link
+            href="/signup"
+            className="mt-1 inline-flex items-center justify-center text-sm font-semibold text-white underline underline-offset-2 hover:text-slate-200"
+          >
+            회원가입하기
+          </Link>
         </div>
+
+        {isTestLoginEnabled ? (
+          <div className="space-y-2 border-t border-white/10 pt-4">
+            <p className="text-xs text-slate-400">테스트 로그인</p>
+            {TEST_ACCOUNTS.map((account) => (
+              <Button
+                key={account.key}
+                type="button"
+                variant="outline"
+                className="h-11 w-full rounded-xl border-slate-600 bg-slate-900 text-slate-100 hover:bg-slate-800"
+                onClick={() => {
+                  void loginWithTestAccount(account);
+                }}
+                disabled={Boolean(pendingAccountKey)}
+              >
+                {pendingAccountKey === account.key ? '로그인 중...' : account.label}
+              </Button>
+            ))}
+          </div>
+        ) : null}
       </Card>
+
+      <p className="mt-4 text-center text-xs text-slate-500">
+        로그인/가입 시{' '}
+        <Link href="/legal/terms" className="underline underline-offset-2 hover:text-slate-300">
+          이용약관
+        </Link>
+        {' '}및{' '}
+        <Link href="/legal/privacy" className="underline underline-offset-2 hover:text-slate-300">
+          개인정보처리방침
+        </Link>
+        에 동의한 것으로 간주됩니다.
+      </p>
     </div>
   );
 }

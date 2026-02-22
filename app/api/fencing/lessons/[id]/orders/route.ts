@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase-server';
 import { ensureProfileRow } from '@/lib/ensure-profile';
+import { createNotificationAndPush } from '@/lib/notifications';
 
 type RouteContext = {
   params: Promise<{
@@ -59,18 +60,15 @@ export async function POST(_request: Request, { params }: RouteContext) {
       return NextResponse.json({ error: 'Failed to create order' }, { status: 500 });
     }
 
-    const { error: notificationError } = await supabase.from('notifications').insert({
-      user_id: lesson.coach_id,
-      actor_id: user.id,
+    await createNotificationAndPush({
+      userId: lesson.coach_id,
+      actorId: user.id,
       type: 'order',
       title: '새 레슨 신청이 도착했습니다.',
       body: lesson.title,
       link: '/activity?view=manage',
+      dedupeKey: `lesson-order-request:${lessonId}:${user.id}`,
     });
-
-    if (notificationError) {
-      console.error('Error creating lesson order notification:', notificationError);
-    }
 
     return NextResponse.json({ ok: true, ordered: true });
   } catch (error) {
@@ -78,4 +76,3 @@ export async function POST(_request: Request, { params }: RouteContext) {
     return NextResponse.json({ error: 'Failed to create order' }, { status: 500 });
   }
 }
-

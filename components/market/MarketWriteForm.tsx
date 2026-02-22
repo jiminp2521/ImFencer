@@ -279,6 +279,8 @@ export function MarketWriteForm({ editId }: MarketWriteFormProps) {
                 }}
               />
               {imagePreviewUrl && (
+                // Blob preview URL is produced locally from File input.
+                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={imagePreviewUrl}
                   alt="업로드 미리보기"

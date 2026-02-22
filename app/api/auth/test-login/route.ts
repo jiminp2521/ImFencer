@@ -18,6 +18,8 @@ type TestAccountConfig = {
 
 const DEFAULT_PASSWORD = 'testuser1234!';
 const TEST_LOGIN_API_VERSION = '2026-02-17-test-login-v2';
+const isTestLoginEnabled = () =>
+  ['1', 'true'].includes((process.env.ENABLE_TEST_LOGIN || '').trim().toLowerCase());
 
 const normalize = (value: string) => value.trim().toLowerCase();
 const maskPrefix = (value: string | undefined, length = 18) => {
@@ -140,14 +142,13 @@ const upsertTestProfile = async ({
 };
 
 export async function POST(request: Request) {
-  const rawEnableValue = (process.env.ENABLE_TEST_LOGIN || '').trim().toLowerCase();
-  const enabled = rawEnableValue === '0' || rawEnableValue === 'false' ? false : true;
+  const enabled = isTestLoginEnabled();
 
   if (!enabled) {
     return NextResponse.json(
       {
         error: 'TEST_LOGIN_DISABLED',
-        message: 'ENABLE_TEST_LOGIN 값이 0/false 로 설정되어 있습니다.',
+        message: 'ENABLE_TEST_LOGIN 값을 1/true 로 설정해야 테스트 로그인을 사용할 수 있습니다.',
       },
       { status: 403 }
     );
@@ -282,8 +283,7 @@ export async function GET() {
   return NextResponse.json({
     ok: true,
     apiVersion: TEST_LOGIN_API_VERSION,
-    enabled: (process.env.ENABLE_TEST_LOGIN || '').trim().toLowerCase() !== '0' &&
-      (process.env.ENABLE_TEST_LOGIN || '').trim().toLowerCase() !== 'false',
+    enabled: isTestLoginEnabled(),
     keySource,
     keyPrefix: maskPrefix(activeKey),
     isPublishableKey: isPublishableKey(activeKey),

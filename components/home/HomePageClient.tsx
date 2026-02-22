@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { ChevronDown, Search } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -141,12 +142,6 @@ export function HomePageClient() {
   const canUseWeaponFeed = data?.canUseWeaponFeed ?? selectedScope !== 'weapon';
 
   useEffect(() => {
-    if (searchText) {
-      setIsSearchOpen(true);
-    }
-  }, [searchText]);
-
-  useEffect(() => {
     if (!hasNextPage) return;
 
     const nextPageParams = new URLSearchParams({
@@ -165,7 +160,14 @@ export function HomePageClient() {
     <div className="imf-page">
       <header className="imf-topbar">
         <div className="imf-logo">
-          <img src="/app-logo.png" alt="ImFencer" className="object-contain w-full h-full object-left" />
+          <Image
+            src="/app-logo.png"
+            alt="ImFencer"
+            width={128}
+            height={32}
+            className="object-contain w-full h-full object-left"
+            priority
+          />
         </div>
         <div className="flex items-center gap-2">
           <NotificationBell />

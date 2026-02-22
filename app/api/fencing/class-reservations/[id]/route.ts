@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase-server';
 import { ensureProfileRow } from '@/lib/ensure-profile';
+import { createNotificationAndPush } from '@/lib/notifications';
 
 type RouteContext = {
   params: Promise<{
@@ -66,12 +67,22 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       return NextResponse.json({ error: 'Reservation not found' }, { status: 404 });
     }
 
+    const updatePayload: {
+      status: PatchBody['status'];
+      updated_at: string;
+      payment_status?: 'cancelled';
+    } = {
+      status: nextStatus,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (nextStatus === 'cancelled') {
+      updatePayload.payment_status = 'cancelled';
+    }
+
     const { error } = await supabase
       .from('fencing_class_reservations')
-      .update({
-        status: nextStatus,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updatePayload)
       .eq('id', id);
 
     if (error) {
@@ -84,18 +95,15 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     const classTitle = classRef?.title || '클래스';
 
     const statusText = nextStatus === 'confirmed' ? '확정' : nextStatus === 'cancelled' ? '취소' : '접수';
-    const { error: notificationError } = await supabase.from('notifications').insert({
-      user_id: typedReservation.user_id,
-      actor_id: user.id,
+    await createNotificationAndPush({
+      userId: typedReservation.user_id,
+      actorId: user.id,
       type: 'reservation',
       title: `클래스 예약이 ${statusText}되었습니다.`,
       body: classTitle,
       link: '/activity',
+      dedupeKey: `class-reservation-status:${typedReservation.id}:${nextStatus}`,
     });
-
-    if (notificationError) {
-      console.error('Error creating reservation status notification:', notificationError);
-    }
 
     return NextResponse.json({ ok: true, status: nextStatus });
   } catch (error) {
@@ -103,4 +111,3 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     return NextResponse.json({ error: 'Failed to update reservation' }, { status: 500 });
   }
 }
-

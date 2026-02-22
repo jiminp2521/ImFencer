@@ -34,12 +34,14 @@ const resolveAccountConfig = (accountKey: TestAccountKey): TestAccountProfileCon
 const isValidAccountKey = (value: string | undefined): value is TestAccountKey => {
   return value === 'test-1' || value === 'test-2' || value === 'test-3';
 };
+const isTestLoginEnabled = () =>
+  ['1', 'true'].includes((process.env.ENABLE_TEST_LOGIN || '').trim().toLowerCase());
 
 const createAdminClient = (): SupabaseClient | null => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const serviceRoleKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
 
-  if (!url || !serviceRoleKey) {
+  if (!url || !serviceRoleKey || !serviceRoleKey.startsWith('sb_secret_')) {
     return null;
   }
 
@@ -114,6 +116,16 @@ const upsertTestProfile = async ({
 };
 
 export async function POST(request: Request) {
+  if (!isTestLoginEnabled()) {
+    return NextResponse.json(
+      {
+        error: 'TEST_LOGIN_DISABLED',
+        message: 'ENABLE_TEST_LOGIN 값을 1/true 로 설정해야 테스트 계정을 사용할 수 있습니다.',
+      },
+      { status: 403 }
+    );
+  }
+
   const body = (await request.json().catch(() => null)) as TestAccountBody | null;
   const accountKey = body?.accountKey;
 

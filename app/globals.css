@@ -48,6 +48,7 @@
 }
 
 :root {
+  --font-app: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   --radius: 0.5rem;
   --safe-area-top: env(safe-area-inset-top, 0px);
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);

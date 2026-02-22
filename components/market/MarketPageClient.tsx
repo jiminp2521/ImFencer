@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { Search } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -154,12 +155,6 @@ export function MarketPageClient() {
   const hasNextPage = Boolean(data?.hasNextPage);
 
   useEffect(() => {
-    if (searchText) {
-      setIsSearchOpen(true);
-    }
-  }, [searchText]);
-
-  useEffect(() => {
     if (!hasNextPage) return;
 
     const nextPageParams = new URLSearchParams({
@@ -177,7 +172,14 @@ export function MarketPageClient() {
     <div className="imf-page">
       <header className="imf-topbar">
         <div className="imf-logo">
-          <img src="/app-logo.png" alt="ImFencer" className="object-contain w-full h-full object-left" />
+          <Image
+            src="/app-logo.png"
+            alt="ImFencer"
+            width={128}
+            height={32}
+            className="object-contain w-full h-full object-left"
+            priority
+          />
         </div>
         <div className="flex items-center gap-2">
           <NotificationBell />
@@ -304,11 +306,16 @@ export function MarketPageClient() {
                 >
                   <div className="flex gap-3">
                     {item.image_url ? (
-                      <img
-                        src={item.image_url}
-                        alt={item.title}
-                        className="h-20 w-20 shrink-0 rounded-xl border border-white/10 object-cover bg-slate-950"
-                      />
+                      <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-slate-950">
+                        <Image
+                          src={item.image_url}
+                          alt={item.title}
+                          fill
+                          sizes="80px"
+                          unoptimized
+                          className="object-cover"
+                        />
+                      </div>
                     ) : (
                       <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-slate-950 text-[10px] text-slate-600">
                         NO IMAGE

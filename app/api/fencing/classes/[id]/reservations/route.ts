@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase-server';
 import { ensureProfileRow } from '@/lib/ensure-profile';
+import { createNotificationAndPush } from '@/lib/notifications';
 
 type RouteContext = {
   params: Promise<{
@@ -75,18 +76,15 @@ export async function POST(_request: Request, { params }: RouteContext) {
     }
 
     if (managerUserId && managerUserId !== user.id) {
-      const { error: notificationError } = await supabase.from('notifications').insert({
-        user_id: managerUserId,
-        actor_id: user.id,
+      await createNotificationAndPush({
+        userId: managerUserId,
+        actorId: user.id,
         type: 'reservation',
         title: '새 클래스 예약 요청이 도착했습니다.',
         body: typedClass.title,
         link: '/activity?view=manage',
+        dedupeKey: `class-reservation-request:${classId}:${user.id}`,
       });
-
-      if (notificationError) {
-        console.error('Error creating reservation notification:', notificationError);
-      }
     }
 
     return NextResponse.json({ ok: true, reserved: true });
@@ -95,4 +93,3 @@ export async function POST(_request: Request, { params }: RouteContext) {
     return NextResponse.json({ error: 'Failed to create reservation' }, { status: 500 });
   }
 }
-

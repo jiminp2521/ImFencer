@@ -8,9 +8,9 @@
 
 1. Supabase Dashboard > Authentication > URL Configuration
 2. `Site URL`:
-   - `https://imfencer.vercel.app`
+   - `https://imfencer.com`
 3. `Redirect URLs`에 아래 2개 추가:
-   - `https://imfencer.vercel.app/auth/callback`
+   - `https://imfencer.com/auth/callback`
    - `imfencer://auth/callback`
 4. Authentication > Providers에서 Google/Kakao/Apple 활성화
 
@@ -28,7 +28,7 @@
 2. Redirect URI 추가:
    - `https://xpirrkfejdnjiaivohez.supabase.co/auth/v1/callback`
 3. 플랫폼 등록:
-   - Web: `https://imfencer.vercel.app`
+   - Web: `https://imfencer.com`
 4. REST API Key(+ Secret 사용 시 Secret) 값을 Supabase Kakao Provider에 입력
 
 ### D. Apple
@@ -47,7 +47,7 @@
 
 1. Xcode > App target > Signing & Capabilities
 2. `Associated Domains` 추가:
-   - `applinks:imfencer.vercel.app`
+   - `applinks:imfencer.com`
 3. 프로젝트에 entitlements 파일 연결 확인:
    - `mobile/ios/App/App/App.entitlements`
 4. URL Scheme 확인:
@@ -57,7 +57,7 @@
 
 1. `mobile/android/app/src/main/AndroidManifest.xml`의 intent-filter 유지
 2. 앱링크 검증용 파일 배포 확인:
-   - `https://imfencer.vercel.app/.well-known/assetlinks.json`
+   - `https://imfencer.com/.well-known/assetlinks.json`
 
 ### 공통 검증 시나리오
 

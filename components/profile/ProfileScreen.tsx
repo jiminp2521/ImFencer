@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -142,7 +143,14 @@ export async function ProfileScreen({
       {headerVariant === 'app' ? (
         <header className="imf-topbar">
           <div className="imf-logo">
-            <img src="/app-logo.png" alt="ImFencer" className="object-contain w-full h-full object-left" />
+            <Image
+              src="/app-logo.png"
+              alt="ImFencer"
+              width={128}
+              height={32}
+              className="object-contain w-full h-full object-left"
+              priority
+            />
           </div>
           <div className="flex items-center gap-2">
             {isOwner && showOwnerMenu ? <ProfileMenuButton userId={profileUserId} username={displayName} /> : null}

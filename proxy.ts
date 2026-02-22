@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { getSupabasePublishableKey, getSupabaseUrl } from '@/lib/supabase-env'
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
     let supabaseResponse = NextResponse.next({
         request,
     })
@@ -78,6 +78,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
     matcher: [
-        '/((?!api|_next/static|_next/image|favicon.ico|login|signup|auth|\\.well-known|.*\\..*).*)',
+        '/((?!api|_next/static|_next/image|favicon.ico|login|signup|auth|legal|\\.well-known|.*\\..*).*)',
     ],
 }
