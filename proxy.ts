@@ -45,7 +45,7 @@ export async function proxy(request: NextRequest) {
 
     const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('is_deleted, user_type')
+        .select('is_deleted, user_type, username')
         .eq('id', user.id)
         .maybeSingle()
 
@@ -59,6 +59,13 @@ export async function proxy(request: NextRequest) {
         const url = request.nextUrl.clone()
         url.pathname = '/login'
         url.searchParams.set('deleted', '1')
+        return NextResponse.redirect(url)
+    }
+
+    if (!profile?.username) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/signup/profile'
+        url.search = ''
         return NextResponse.redirect(url)
     }
 

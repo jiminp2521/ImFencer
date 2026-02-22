@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
+import { ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 
 interface SocialLoginProps {
     mode?: 'login' | 'signup';
@@ -18,15 +19,22 @@ type ConsentKey =
     | 'age14'
     | 'serviceTerms'
     | 'privacyCollection'
+    | 'entrustmentNotice'
     | 'privacyPolicy'
     | 'marketing';
+
+type ConsentSection = {
+    title: string;
+    lines: string[];
+};
 
 type ConsentItem = {
     key: ConsentKey;
     required: boolean;
     title: string;
-    detail: string;
+    summary: string;
     href?: string;
+    sections: ConsentSection[];
 };
 
 const PROVIDER_LABEL: Record<SocialProvider, string> = {
@@ -39,35 +47,211 @@ const CONSENT_ITEMS: ConsentItem[] = [
     {
         key: 'age14',
         required: true,
-        title: '(필수) 만 14세 이상입니다.',
-        detail: '만 14세 미만은 법정대리인 동의 없이 가입할 수 없습니다.',
+        title: '만 14세 이상 확인',
+        summary: '만 14세 미만은 법정대리인 동의 절차가 준비되기 전까지 가입할 수 없습니다.',
+        sections: [
+            {
+                title: '① 가입 대상',
+                lines: [
+                    'ImFencer는 만 14세 이상 이용자를 대상으로 서비스를 제공합니다.',
+                    '생년월일 또는 연령 정보가 사실과 다를 경우 서비스 이용이 제한될 수 있습니다.',
+                ],
+            },
+            {
+                title: '② 미성년자 정책',
+                lines: [
+                    '만 14세 미만 이용자는 별도 법정대리인 동의 절차가 제공될 때까지 가입이 제한됩니다.',
+                    '향후 미성년자 가입 기능을 도입하는 경우 별도 동의 화면으로 재동의를 받습니다.',
+                ],
+            },
+            {
+                title: '③ 허위 정보 입력 시 조치',
+                lines: [
+                    '허위 연령 입력이 확인되면 계정이 임시 정지 또는 삭제될 수 있습니다.',
+                    '운영정책 위반 기록이 누적되면 재가입 제한이 적용될 수 있습니다.',
+                ],
+            },
+        ],
     },
     {
         key: 'serviceTerms',
         required: true,
-        title: '(필수) 이용약관 동의',
-        detail: '서비스 이용을 위한 기본 약관에 동의합니다.',
+        title: '이용약관 동의',
+        summary: '커뮤니티, 채팅, 거래, 레슨/클래스 예약 기능 이용을 위한 기본 약관입니다.',
         href: '/legal/terms',
+        sections: [
+            {
+                title: '① 서비스 제공 범위',
+                lines: [
+                    '서비스는 커뮤니티 글/댓글, 채팅, 중고거래, 레슨/클래스 신청, 결제 연동 기능을 제공합니다.',
+                    '운영상 필요할 경우 일부 기능은 사전 공지 후 변경 또는 중단될 수 있습니다.',
+                ],
+            },
+            {
+                title: '② 회원 의무',
+                lines: [
+                    '회원은 관계 법령, 본 약관, 운영정책을 준수하여 서비스를 이용해야 합니다.',
+                    '타인의 권리 침해, 사기/허위거래, 스팸, 욕설, 불법 게시물 작성은 금지됩니다.',
+                ],
+            },
+            {
+                title: '③ 게시물 및 거래 책임',
+                lines: [
+                    '게시물과 거래 내용의 책임은 작성자 또는 거래 당사자에게 있습니다.',
+                    '운영자는 분쟁 예방을 위해 신고 처리, 임시 숨김, 계정 제한 조치를 할 수 있습니다.',
+                ],
+            },
+            {
+                title: '④ 이용 제한 및 탈퇴',
+                lines: [
+                    '중대한 정책 위반 시 계정 일시정지, 영구정지, 서비스 이용 제한이 적용될 수 있습니다.',
+                    '회원은 언제든지 앱 내 계정삭제 기능으로 탈퇴를 요청할 수 있습니다.',
+                ],
+            },
+            {
+                title: '⑤ 약관 개정',
+                lines: [
+                    '약관은 관련 법령 및 서비스 정책에 따라 개정될 수 있습니다.',
+                    '중요 변경은 앱 공지 또는 서비스 내 고지로 안내하며, 개정 후 계속 이용 시 동의로 봅니다.',
+                ],
+            },
+        ],
     },
     {
         key: 'privacyCollection',
         required: true,
-        title: '(필수) 개인정보 수집·이용 동의',
-        detail: '회원 식별, 커뮤니티/거래/문의 기능 제공을 위해 최소한의 정보를 수집·이용합니다.',
+        title: '개인정보 수집·이용 동의',
+        summary: '회원 식별과 서비스 제공을 위해 필요한 최소한의 개인정보를 수집·이용합니다.',
         href: '/legal/privacy',
+        sections: [
+            {
+                title: '① 수집 항목',
+                lines: [
+                    '소셜 로그인 시: 소셜 식별자, 이메일, 프로필 닉네임(제공 범위 내) 정보를 수집할 수 있습니다.',
+                    '가입 완료 시: 닉네임, 종목, 선수 구분, 소속 클럽(선택)을 수집합니다.',
+                    '서비스 이용 시: 게시물/댓글/채팅/거래/결제/접속기록/기기정보/푸시토큰이 생성될 수 있습니다.',
+                ],
+            },
+            {
+                title: '② 이용 목적',
+                lines: [
+                    '회원 식별 및 인증, 계정 보안, 커뮤니티/채팅/거래 기능 제공에 이용합니다.',
+                    '예약·결제 처리, 고객문의 대응, 부정 이용 방지, 서비스 품질 개선에 이용합니다.',
+                ],
+            },
+            {
+                title: '③ 보관 및 파기',
+                lines: [
+                    '원칙적으로 탈퇴 시 지체 없이 파기하되, 관계 법령에 따라 보관 의무가 있는 정보는 해당 기간 보관합니다.',
+                    '전자상거래 및 통신비밀보호 등 관련 법령에 따른 보존 항목은 기간 만료 후 즉시 파기합니다.',
+                ],
+            },
+            {
+                title: '④ 동의 거부 권리',
+                lines: [
+                    '필수 항목 동의를 거부할 권리가 있으나, 이 경우 회원가입 및 핵심 기능 이용이 제한됩니다.',
+                    '선택 항목은 동의하지 않아도 가입 및 기본 기능 이용이 가능합니다.',
+                ],
+            },
+        ],
+    },
+    {
+        key: 'entrustmentNotice',
+        required: true,
+        title: '개인정보 처리위탁·외부 연동 안내 확인',
+        summary: '안정적인 서비스 운영을 위해 외부 서비스에 업무를 위탁하거나 연동합니다.',
+        href: '/legal/privacy',
+        sections: [
+            {
+                title: '① 처리위탁 내역',
+                lines: [
+                    '인증/DB/스토리지: Supabase',
+                    '웹 호스팅 및 배포: Vercel',
+                    '푸시 알림 전송: Firebase Cloud Messaging',
+                    '결제 처리: 토스페이먼츠(결제 시점에 한함)',
+                ],
+            },
+            {
+                title: '② 제3자 제공 원칙',
+                lines: [
+                    '회사는 원칙적으로 이용자 동의 없이 개인정보를 제3자에게 제공하지 않습니다.',
+                    '법령상 의무 이행 또는 결제/정산 등 서비스 이행에 필요한 최소 범위에서만 처리합니다.',
+                ],
+            },
+            {
+                title: '③ 국외 처리 가능성',
+                lines: [
+                    '클라우드·소셜 로그인 인프라 특성상 개인정보가 국외 서버에서 처리될 수 있습니다.',
+                    '국외 이전이 발생하는 경우 이전 국가, 항목, 목적, 보관 기간을 처리방침에 공개합니다.',
+                ],
+            },
+            {
+                title: '④ 안전성 확보 조치',
+                lines: [
+                    '접근권한 관리, 전송구간 암호화, 로그 모니터링 등 기술적·관리적 보호조치를 적용합니다.',
+                    '수탁사 변경 시 처리방침 및 동의 화면을 통해 즉시 안내합니다.',
+                ],
+            },
+        ],
     },
     {
         key: 'privacyPolicy',
         required: true,
-        title: '(필수) 개인정보 처리방침 확인',
-        detail: '개인정보의 처리 목적, 보관 기간, 파기 및 권리 행사 방법을 확인했습니다.',
+        title: '개인정보처리방침 확인',
+        summary: '개인정보 처리 전반(권리행사, 파기, 안전조치, 문의처)을 확인했습니다.',
         href: '/legal/privacy',
+        sections: [
+            {
+                title: '① 고지 항목',
+                lines: [
+                    '처리방침에는 수집 항목, 처리 목적, 보관 기간, 파기 절차, 권리행사 방법이 포함됩니다.',
+                    '법령 및 서비스 정책 변경 시 개정일자와 변경사항을 함께 고지합니다.',
+                ],
+            },
+            {
+                title: '② 이용자 권리',
+                lines: [
+                    '이용자는 본인의 개인정보 열람, 정정, 삭제, 처리정지를 요청할 수 있습니다.',
+                    '앱 내 계정삭제 메뉴를 통해 탈퇴 및 처리중단을 요청할 수 있습니다.',
+                ],
+            },
+            {
+                title: '③ 계정 보안 및 신고',
+                lines: [
+                    '비정상 접근이 의심되면 즉시 비밀번호 변경 또는 계정 보호 조치를 해야 합니다.',
+                    '개인정보 침해 또는 계정 도용이 의심되는 경우 고객지원 채널로 즉시 신고해야 합니다.',
+                ],
+            },
+        ],
     },
     {
         key: 'marketing',
         required: false,
-        title: '(선택) 마케팅 정보 수신 동의',
-        detail: '이벤트/혜택 안내 알림 수신에 동의합니다. (언제든 철회 가능)',
+        title: '마케팅 정보 수신 동의',
+        summary: '이벤트/혜택/업데이트 안내를 앱 푸시 또는 이메일로 수신합니다. 언제든 철회할 수 있습니다.',
+        sections: [
+            {
+                title: '① 수신 정보',
+                lines: [
+                    '신규 기능 출시, 이벤트, 할인/프로모션, 커뮤니티 캠페인 안내를 발송할 수 있습니다.',
+                    '광고성 정보에는 발신자 정보, 수신거부 방법을 함께 안내합니다.',
+                ],
+            },
+            {
+                title: '② 수신 채널',
+                lines: [
+                    '앱 푸시, 이메일 채널로 발송될 수 있습니다.',
+                    '서비스 운영상 필수 안내(정책 변경, 보안 공지 등)는 마케팅 동의 여부와 무관하게 발송될 수 있습니다.',
+                ],
+            },
+            {
+                title: '③ 동의 철회',
+                lines: [
+                    '마케팅 동의는 프로필/설정 메뉴 또는 고객지원 요청으로 언제든지 철회할 수 있습니다.',
+                    '철회 처리 전 이미 발송 준비된 메시지는 일부 수신될 수 있습니다.',
+                ],
+            },
+        ],
     },
 ];
 
@@ -77,6 +261,16 @@ const createInitialConsents = (): Record<ConsentKey, boolean> => ({
     age14: false,
     serviceTerms: false,
     privacyCollection: false,
+    entrustmentNotice: false,
+    privacyPolicy: false,
+    marketing: false,
+});
+
+const createInitialExpandedState = (): Record<ConsentKey, boolean> => ({
+    age14: false,
+    serviceTerms: false,
+    privacyCollection: false,
+    entrustmentNotice: false,
     privacyPolicy: false,
     marketing: false,
 });
@@ -92,6 +286,7 @@ export function SocialLogin({ mode = 'login' }: SocialLoginProps) {
     const [pendingProvider, setPendingProvider] = useState<SocialProvider | null>(null);
     const [consentProvider, setConsentProvider] = useState<SocialProvider | null>(null);
     const [consents, setConsents] = useState<Record<ConsentKey, boolean>>(createInitialConsents);
+    const [expandedItems, setExpandedItems] = useState<Record<ConsentKey, boolean>>(createInitialExpandedState);
     const [consentError, setConsentError] = useState<string | null>(null);
 
     const isSignup = mode === 'signup';
@@ -105,6 +300,8 @@ export function SocialLogin({ mode = 'login' }: SocialLoginProps) {
         () => CONSENT_ITEMS.every((item) => consents[item.key]),
         [consents]
     );
+    const requiredCount = REQUIRED_CONSENT_KEYS.length;
+    const optionalCount = CONSENT_ITEMS.length - requiredCount;
 
     const setAllConsents = (checked: boolean) => {
         const nextState = createInitialConsents();
@@ -118,6 +315,13 @@ export function SocialLogin({ mode = 'login' }: SocialLoginProps) {
         setConsents((prev) => ({
             ...prev,
             [key]: checked,
+        }));
+    };
+
+    const toggleExpanded = (key: ConsentKey) => {
+        setExpandedItems((prev) => ({
+            ...prev,
+            [key]: !prev[key],
         }));
     };
 
@@ -325,62 +529,113 @@ export function SocialLogin({ mode = 'login' }: SocialLoginProps) {
 
             {isSignup && consentProvider ? (
                 <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/80 p-4 sm:items-center">
-                    <div className="w-full max-w-md rounded-2xl border border-white/10 bg-slate-950 p-4 shadow-2xl">
-                        <div className="mb-3 flex items-start justify-between gap-3">
-                            <div>
-                                <h3 className="text-base font-semibold text-white">
-                                    {PROVIDER_LABEL[consentProvider]}로 가입하기
-                                </h3>
-                                <p className="mt-1 text-xs text-slate-400">
-                                    가입 진행을 위해 아래 약관/개인정보 항목 동의가 필요합니다.
-                                </p>
-                            </div>
+                    <div className="w-full max-w-2xl rounded-2xl border border-white/10 bg-slate-950 shadow-2xl max-h-[88vh] overflow-hidden flex flex-col">
+                        <div className="border-b border-white/10 px-4 py-4 sm:px-5">
+                            <h3 className="text-base font-semibold text-white">
+                                {PROVIDER_LABEL[consentProvider]}로 가입하기
+                            </h3>
+                            <p className="mt-1 text-xs text-slate-400">
+                                필수 {requiredCount}개, 선택 {optionalCount}개 항목을 확인하고 동의하면 가입이 진행됩니다.
+                            </p>
                         </div>
 
-                        <label className="mb-2 flex cursor-pointer items-center gap-2 rounded-lg border border-white/10 bg-black/40 px-3 py-2">
-                            <input
-                                type="checkbox"
-                                checked={allConsentChecked}
-                                onChange={(event) => setAllConsents(event.target.checked)}
-                                className="h-4 w-4 rounded border-slate-600 bg-black text-white"
-                            />
-                            <span className="text-sm font-semibold text-slate-100">전체 동의</span>
-                        </label>
+                        <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-5">
+                            <div className="mb-3 rounded-xl border border-cyan-300/20 bg-cyan-500/10 px-3 py-2 text-[11px] leading-5 text-cyan-100">
+                                개인정보보호법, 앱스토어 정책, 운영정책 기준에 따라 동의 항목을 제공합니다.
+                                <br />
+                                항목별 “전문 보기”에서 실제 고지 내용을 확인할 수 있습니다.
+                            </div>
 
-                        <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
-                            {CONSENT_ITEMS.map((item) => (
-                                <label key={item.key} className="block cursor-pointer rounded-lg border border-white/10 px-3 py-2">
-                                    <div className="flex items-start gap-2">
-                                        <input
-                                            type="checkbox"
-                                            checked={consents[item.key]}
-                                            onChange={(event) => setConsent(item.key, event.target.checked)}
-                                            className="mt-0.5 h-4 w-4 rounded border-slate-600 bg-black text-white"
-                                        />
-                                        <div className="min-w-0 flex-1">
-                                            <p className="text-sm text-slate-100">{item.title}</p>
-                                            <p className="mt-0.5 text-xs text-slate-400">{item.detail}</p>
-                                            {item.href ? (
-                                                <Link
-                                                    href={item.href}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="mt-1 inline-block text-xs text-slate-300 underline underline-offset-2 hover:text-white"
-                                                >
-                                                    전문 보기
-                                                </Link>
+                            <label className="mb-3 flex cursor-pointer items-center gap-2 rounded-lg border border-white/10 bg-black/40 px-3 py-2">
+                                <input
+                                    type="checkbox"
+                                    checked={allConsentChecked}
+                                    onChange={(event) => setAllConsents(event.target.checked)}
+                                    className="h-4 w-4 rounded border-slate-600 bg-black text-white"
+                                />
+                                <span className="text-sm font-semibold text-slate-100">전체 동의</span>
+                            </label>
+
+                            <div className="space-y-2">
+                                {CONSENT_ITEMS.map((item) => {
+                                    const expanded = expandedItems[item.key];
+                                    return (
+                                        <div
+                                            key={item.key}
+                                            className="rounded-xl border border-white/10 bg-black/30"
+                                        >
+                                            <div className="flex items-start gap-3 px-3 py-3">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={consents[item.key]}
+                                                    onChange={(event) => setConsent(item.key, event.target.checked)}
+                                                    className="mt-1 h-4 w-4 rounded border-slate-600 bg-black text-white"
+                                                />
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${item.required ? 'bg-rose-500/20 text-rose-100' : 'bg-slate-600/30 text-slate-200'}`}>
+                                                            {item.required ? '필수' : '선택'}
+                                                        </span>
+                                                        <p className="text-sm font-semibold text-slate-100">{item.title}</p>
+                                                    </div>
+                                                    <p className="mt-1 text-xs leading-5 text-slate-400">{item.summary}</p>
+
+                                                    <div className="mt-2 flex flex-wrap items-center gap-3">
+                                                        {item.href ? (
+                                                            <Link
+                                                                href={item.href}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="inline-flex items-center gap-1 text-xs text-slate-300 underline underline-offset-2 hover:text-white"
+                                                            >
+                                                                약관/방침 원문
+                                                                <ExternalLink className="h-3.5 w-3.5" />
+                                                            </Link>
+                                                        ) : null}
+
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => toggleExpanded(item.key)}
+                                                            className="inline-flex items-center gap-1 text-xs text-slate-300 hover:text-white"
+                                                        >
+                                                            전문 {expanded ? '접기' : '보기'}
+                                                            {expanded ? (
+                                                                <ChevronUp className="h-3.5 w-3.5" />
+                                                            ) : (
+                                                                <ChevronDown className="h-3.5 w-3.5" />
+                                                            )}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {expanded ? (
+                                                <div className="border-t border-white/10 bg-slate-900/70 px-3 pb-3 pt-2">
+                                                    <div className="space-y-3">
+                                                        {item.sections.map((section) => (
+                                                            <div key={section.title} className="rounded-lg border border-white/5 bg-black/20 px-3 py-2">
+                                                                <p className="text-xs font-semibold text-slate-100">{section.title}</p>
+                                                                <div className="mt-1 space-y-1 text-[11px] leading-5 text-slate-300">
+                                                                    {section.lines.map((line) => (
+                                                                        <p key={`${section.title}-${line}`}>{line}</p>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
                                             ) : null}
                                         </div>
-                                    </div>
-                                </label>
-                            ))}
+                                    );
+                                })}
+                            </div>
+
+                            {consentError ? (
+                                <p className="mt-3 text-xs text-red-300">{consentError}</p>
+                            ) : null}
                         </div>
 
-                        {consentError ? (
-                            <p className="mt-2 text-xs text-red-300">{consentError}</p>
-                        ) : null}
-
-                        <div className="mt-4 grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-2 gap-2 border-t border-white/10 p-4 sm:px-5">
                             <Button
                                 type="button"
                                 variant="outline"
