@@ -14,7 +14,6 @@ import {
   LogOut,
   UserX,
   Shield,
-  WandSparkles,
   Store,
   Trophy,
 } from 'lucide-react';
@@ -36,6 +35,7 @@ export function ProfileMenuButton({ userId, username }: ProfileMenuButtonProps) 
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [deletePending, setDeletePending] = useState(false);
+  const [logoutPending, setLogoutPending] = useState(false);
   const publicProfileHref = useMemo(() => `/users/${userId}`, [userId]);
 
   const copyProfileLink = async () => {
@@ -88,6 +88,29 @@ export function ProfileMenuButton({ userId, username }: ProfileMenuButtonProps) 
     }
   };
 
+  const logout = async () => {
+    if (logoutPending) return;
+    setLogoutPending(true);
+
+    try {
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+      });
+
+      const body = (await response.json().catch(() => null)) as { redirectPath?: string } | null;
+      const redirectPath = body?.redirectPath || '/login';
+
+      close();
+      router.replace(redirectPath);
+      router.refresh();
+    } catch (error) {
+      console.error('Logout failed:', error);
+      alert('로그아웃에 실패했습니다.');
+    } finally {
+      setLogoutPending(false);
+    }
+  };
+
   const itemClass =
     'flex items-center justify-between rounded-lg border border-white/10 bg-gray-950 px-3 py-3 text-sm text-gray-200 hover:bg-gray-900/70 transition-colors';
 
@@ -107,14 +130,6 @@ export function ProfileMenuButton({ userId, username }: ProfileMenuButtonProps) 
         </SheetHeader>
 
         <div className="px-4 pt-2 space-y-2">
-          <Link href="/profile/avatar" onClick={close} className={cn(itemClass, 'border-cyan-400/25 bg-cyan-500/10')}>
-            <span className="flex items-center gap-2">
-              <WandSparkles className="h-4 w-4 text-cyan-200" />
-              아바타 스튜디오
-            </span>
-            <span className="text-xs text-cyan-200/80">꾸미기</span>
-          </Link>
-
           <Link href="/profile" onClick={close} className={cn(itemClass, 'border-amber-300/25 bg-amber-500/10')}>
             <span className="flex items-center gap-2">
               <Trophy className="h-4 w-4 text-amber-200" />
@@ -126,7 +141,7 @@ export function ProfileMenuButton({ userId, username }: ProfileMenuButtonProps) 
           <Link href="/market" onClick={close} className={cn(itemClass, 'border-emerald-300/20 bg-emerald-500/10')}>
             <span className="flex items-center gap-2">
               <Store className="h-4 w-4 text-emerald-200" />
-              아바타 아이템 마켓
+              아이템 마켓
             </span>
             <span className="text-xs text-emerald-200/80">탐색</span>
           </Link>
@@ -190,14 +205,15 @@ export function ProfileMenuButton({ userId, username }: ProfileMenuButtonProps) 
             {deletePending ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserX className="h-4 w-4" />}
             계정 삭제
           </button>
-          <Link
-            href="/api/auth/logout"
-            onClick={close}
-            className="flex items-center justify-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-3 text-sm font-medium text-red-200 hover:bg-red-500/20 transition-colors"
+          <button
+            type="button"
+            onClick={logout}
+            disabled={logoutPending}
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-3 text-sm font-medium text-red-200 hover:bg-red-500/20 transition-colors disabled:opacity-50"
           >
             <LogOut className="h-4 w-4" />
-            로그아웃
-          </Link>
+            {logoutPending ? '로그아웃 중...' : '로그아웃'}
+          </button>
         </div>
       </SheetContent>
     </Sheet>

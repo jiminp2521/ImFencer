@@ -9,7 +9,6 @@ import { StartChatButton } from '@/components/chat/StartChatButton';
 import { createClient } from '@/lib/supabase-server';
 import { ProfileMenuButton } from '@/components/profile/ProfileMenuButton';
 import { ensureProfileRow } from '@/lib/ensure-profile';
-import { resolveProfileAvatarSrc } from '@/lib/pixel-avatar';
 
 const weaponMap: Record<string, string> = {
   Fleuret: '플뢰레',
@@ -45,6 +44,13 @@ type ProfileScreenProps = {
   showOwnerMenu?: boolean;
   backHref?: string | null;
   headerVariant?: 'default' | 'app';
+};
+
+const toSafeAvatarSrc = (value: string | null) => {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  return trimmed.startsWith('https://') ? trimmed : null;
 };
 
 export async function ProfileScreen({
@@ -171,8 +177,7 @@ export async function ProfileScreen({
   const receivedLikeCount = likeCountResult.count || 0;
   const awardCount = awardsCountResult.count || 0;
   const posts = (postsResult.data || []) as PostRow[];
-  const avatarSrc = resolveProfileAvatarSrc(profile.avatar_url, profileUserId);
-  const isPixelAvatar = avatarSrc.startsWith('data:image/svg+xml');
+  const avatarSrc = toSafeAvatarSrc(profile.avatar_url);
   const careerScore = postCount * 4 + receivedLikeCount + awardCount * 12;
   const showcaseTitle =
     careerScore >= 160 ? 'National Challenger' : careerScore >= 70 ? 'Club Ace' : careerScore >= 30 ? 'Rising Duelist' : 'Rookie Blade';
@@ -226,7 +231,7 @@ export async function ProfileScreen({
       <main className="p-4 space-y-4">
         <section className="imf-panel flex items-center gap-4 border-cyan-300/20 bg-[linear-gradient(135deg,rgba(7,11,22,0.94),rgba(7,7,11,0.95))]">
           <Avatar className="h-20 w-20 rounded-2xl border-2 border-cyan-300/30 bg-black/50">
-            <AvatarImage src={avatarSrc} className={isPixelAvatar ? '[image-rendering:pixelated]' : ''} />
+            <AvatarImage src={avatarSrc ?? undefined} />
             <AvatarFallback className="rounded-2xl">{displayName.slice(0, 2).toUpperCase()}</AvatarFallback>
           </Avatar>
 
@@ -243,9 +248,6 @@ export async function ProfileScreen({
             <p className="text-sm text-slate-400">{bio}</p>
             {isOwner ? (
               <div className="flex flex-wrap gap-2 pt-1">
-                <Link href="/profile/avatar" className="imf-pill border-cyan-300/40 bg-cyan-500/10 text-cyan-100">
-                  아바타 꾸미기
-                </Link>
                 <Link href="/market" className="imf-pill border-emerald-300/35 bg-emerald-500/10 text-emerald-100">
                   아이템 마켓
                 </Link>
@@ -302,7 +304,7 @@ export async function ProfileScreen({
           </div>
           <p className="text-xs text-amber-100/70">
             {isOwner
-              ? '프로필 메뉴에서 아바타 스튜디오로 들어가 나만의 캐릭터를 꾸미고, 추후 아이템 판매까지 연결할 수 있습니다.'
+              ? '프로필 메뉴에서 내 활동과 콘텐츠를 관리할 수 있습니다.'
               : `${displayName}님의 경기/커뮤니티 활동이 쇼케이스로 정리되어 있습니다.`}
           </p>
         </section>
