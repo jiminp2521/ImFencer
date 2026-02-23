@@ -9,6 +9,7 @@ import { StartChatButton } from '@/components/chat/StartChatButton';
 import { createClient } from '@/lib/supabase-server';
 import { ProfileMenuButton } from '@/components/profile/ProfileMenuButton';
 import { ensureProfileRow } from '@/lib/ensure-profile';
+import { resolveProfileAvatarSrc } from '@/lib/pixel-avatar';
 
 const weaponMap: Record<string, string> = {
   Fleuret: '플뢰레',
@@ -170,6 +171,17 @@ export async function ProfileScreen({
   const receivedLikeCount = likeCountResult.count || 0;
   const awardCount = awardsCountResult.count || 0;
   const posts = (postsResult.data || []) as PostRow[];
+  const avatarSrc = resolveProfileAvatarSrc(profile.avatar_url, profileUserId);
+  const isPixelAvatar = avatarSrc.startsWith('data:image/svg+xml');
+  const careerScore = postCount * 4 + receivedLikeCount + awardCount * 12;
+  const showcaseTitle =
+    careerScore >= 160 ? 'National Challenger' : careerScore >= 70 ? 'Club Ace' : careerScore >= 30 ? 'Rising Duelist' : 'Rookie Blade';
+  const showcaseSummary = `게시글 ${postCount}개 · 받은 좋아요 ${receivedLikeCount}개 · 수상 ${awardCount}회`;
+  const highlightItems = [
+    { label: '커뮤니티 영향력', value: `${receivedLikeCount.toLocaleString()} Likes` },
+    { label: '콘텐츠 생산량', value: `${postCount.toLocaleString()} Posts` },
+    { label: '공식 실적', value: `${awardCount.toLocaleString()} Awards` },
+  ];
 
   return (
     <div className="imf-page">
@@ -212,10 +224,10 @@ export async function ProfileScreen({
       )}
 
       <main className="p-4 space-y-4">
-        <section className="imf-panel flex items-center gap-4">
-          <Avatar className="h-20 w-20 border-2 border-white/20">
-            <AvatarImage src={profile.avatar_url || undefined} />
-            <AvatarFallback>{displayName.slice(0, 2).toUpperCase()}</AvatarFallback>
+        <section className="imf-panel flex items-center gap-4 border-cyan-300/20 bg-[linear-gradient(135deg,rgba(7,11,22,0.94),rgba(7,7,11,0.95))]">
+          <Avatar className="h-20 w-20 rounded-2xl border-2 border-cyan-300/30 bg-black/50">
+            <AvatarImage src={avatarSrc} className={isPixelAvatar ? '[image-rendering:pixelated]' : ''} />
+            <AvatarFallback className="rounded-2xl">{displayName.slice(0, 2).toUpperCase()}</AvatarFallback>
           </Avatar>
 
           <div className="flex-1 space-y-2 min-w-0">
@@ -229,6 +241,16 @@ export async function ProfileScreen({
               ) : null}
             </div>
             <p className="text-sm text-slate-400">{bio}</p>
+            {isOwner ? (
+              <div className="flex flex-wrap gap-2 pt-1">
+                <Link href="/profile/avatar" className="imf-pill border-cyan-300/40 bg-cyan-500/10 text-cyan-100">
+                  아바타 꾸미기
+                </Link>
+                <Link href="/market" className="imf-pill border-emerald-300/35 bg-emerald-500/10 text-emerald-100">
+                  아이템 마켓
+                </Link>
+              </div>
+            ) : null}
             {!isOwner ? (
               <div className="pt-1">
                 <StartChatButton
@@ -259,6 +281,30 @@ export async function ProfileScreen({
             <div className="text-xl font-bold text-white">{awardCount}</div>
             <div className="text-xs text-slate-400">수상 인증</div>
           </Card>
+        </section>
+
+        <section
+          id="career-showcase"
+          className="imf-panel space-y-3 border-amber-300/20 bg-[linear-gradient(128deg,rgba(43,26,8,0.9),rgba(17,10,4,0.96))]"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-lg font-semibold text-amber-100">Career Showcase</h3>
+            <Badge className="border-amber-300/30 bg-amber-400/15 text-amber-100">{showcaseTitle}</Badge>
+          </div>
+          <p className="text-xs text-amber-50/85">{showcaseSummary}</p>
+          <div className="grid grid-cols-3 gap-2">
+            {highlightItems.map((item) => (
+              <div key={item.label} className="rounded-xl border border-amber-200/20 bg-black/30 p-2.5 text-center">
+                <p className="text-[10px] text-amber-100/70">{item.label}</p>
+                <p className="mt-1 text-sm font-semibold text-amber-50">{item.value}</p>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-amber-100/70">
+            {isOwner
+              ? '프로필 메뉴에서 아바타 스튜디오로 들어가 나만의 캐릭터를 꾸미고, 추후 아이템 판매까지 연결할 수 있습니다.'
+              : `${displayName}님의 경기/커뮤니티 활동이 쇼케이스로 정리되어 있습니다.`}
+          </p>
         </section>
 
         <section className="space-y-3">
