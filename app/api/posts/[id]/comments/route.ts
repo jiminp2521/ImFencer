@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase-server';
 import { ensureProfileRow } from '@/lib/ensure-profile';
 import { createNotificationAndPush } from '@/lib/notifications';
+import { getAuthenticatedUserId } from '@/lib/auth-user';
 
 type RouteContext = {
   params: Promise<{
@@ -25,11 +26,9 @@ export async function POST(request: Request, { params }: RouteContext) {
   const { id: postId } = await params;
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const userId = await getAuthenticatedUserId(supabase);
 
-  if (!user) {
+  if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -46,7 +45,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       .from('comments')
       .insert({
         post_id: postId,
-        author_id: user.id,
+        author_id: userId,
         parent_id: parentId,
         content,
       })
@@ -55,19 +54,18 @@ export async function POST(request: Request, { params }: RouteContext) {
         id,
         author_id,
         content,
-        created_at,
-        profiles:author_id (username)
+        created_at
       `
       )
       .single();
 
     if (insertResult.error?.code === '23503') {
-      await ensureProfileRow(supabase, user.id);
+      await ensureProfileRow(supabase, userId);
       insertResult = await supabase
         .from('comments')
         .insert({
           post_id: postId,
-          author_id: user.id,
+          author_id: userId,
           parent_id: parentId,
           content,
         })
@@ -76,8 +74,7 @@ export async function POST(request: Request, { params }: RouteContext) {
           id,
           author_id,
           content,
-          created_at,
-          profiles:author_id (username)
+          created_at
         `
         )
         .single();
@@ -94,9 +91,6 @@ export async function POST(request: Request, { params }: RouteContext) {
       return NextResponse.json({ error: 'Failed to create comment' }, { status: 500 });
     }
 
-    const profile = Array.isArray(inserted.profiles) ? inserted.profiles[0] : inserted.profiles;
-    const authorName = profile?.username || '알 수 없음';
-
     // Push/알림은 사용자 응답 이후 비동기로 처리해서 댓글 등록 체감을 개선한다.
     void (async () => {
       try {
@@ -106,14 +100,14 @@ export async function POST(request: Request, { params }: RouteContext) {
           .eq('id', postId)
           .maybeSingle();
 
-        if (postError || !postRow?.author_id || postRow.author_id === user.id) {
+        if (postError || !postRow?.author_id || postRow.author_id === userId) {
           return;
         }
 
         const notificationBody = content.length > 80 ? `${content.slice(0, 80)}...` : content;
         await createNotificationAndPush({
           userId: postRow.author_id,
-          actorId: user.id,
+          actorId: userId,
           type: 'comment',
           title: '게시글에 새 댓글이 달렸습니다.',
           body: notificationBody,
@@ -132,7 +126,7 @@ export async function POST(request: Request, { params }: RouteContext) {
         authorId: inserted.author_id,
         content: inserted.content,
         createdAt: inserted.created_at,
-        author: authorName,
+        author: '나',
       },
     });
   } catch (error) {

@@ -1,6 +1,5 @@
 import 'server-only';
 import { createAdminClient } from '@/lib/supabase-admin';
-import { sendPush } from '@/lib/push';
 
 type NotificationType = 'chat' | 'comment' | 'reservation' | 'order' | 'review' | 'system';
 
@@ -56,6 +55,7 @@ export async function createNotificationAndPush({
   }
 
   const path = link || '/notifications';
+  const { sendPush } = await import('@/lib/push');
   await sendPush(userId, title, body || '', path, {
     dedupeKey,
     notificationId: inserted.id,

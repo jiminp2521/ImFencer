@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase-server';
 import { ensureProfileRow } from '@/lib/ensure-profile';
+import { getAuthenticatedUserId } from '@/lib/auth-user';
 
 type RouteContext = {
   params: Promise<{
@@ -11,26 +12,30 @@ type RouteContext = {
 export async function POST(_request: Request, { params }: RouteContext) {
   const { id: postId } = await params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const userId = await getAuthenticatedUserId(supabase);
 
-  if (!user) {
+  if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
-    await ensureProfileRow(supabase, user.id);
-
-    const { error } = await supabase.from('post_bookmarks').insert({
+    let insertResult = await supabase.from('post_bookmarks').insert({
       post_id: postId,
-      user_id: user.id,
+      user_id: userId,
     });
 
-    if (error) {
+    if (insertResult.error?.code === '23503') {
+      await ensureProfileRow(supabase, userId);
+      insertResult = await supabase.from('post_bookmarks').insert({
+        post_id: postId,
+        user_id: userId,
+      });
+    }
+
+    if (insertResult.error) {
       // Duplicate bookmark is fine (idempotent).
-      if (error.code !== '23505') {
-        console.error('Error bookmarking post:', error);
+      if (insertResult.error.code !== '23505') {
+        console.error('Error bookmarking post:', insertResult.error);
         return NextResponse.json({ error: 'Failed to bookmark post' }, { status: 500 });
       }
     }
@@ -45,22 +50,18 @@ export async function POST(_request: Request, { params }: RouteContext) {
 export async function DELETE(_request: Request, { params }: RouteContext) {
   const { id: postId } = await params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const userId = await getAuthenticatedUserId(supabase);
 
-  if (!user) {
+  if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
-    await ensureProfileRow(supabase, user.id);
-
     const { error } = await supabase
       .from('post_bookmarks')
       .delete()
       .eq('post_id', postId)
-      .eq('user_id', user.id);
+      .eq('user_id', userId);
 
     if (error) {
       console.error('Error removing bookmark:', error);

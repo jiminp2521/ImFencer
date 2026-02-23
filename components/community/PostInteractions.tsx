@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Bookmark, Heart, Loader2, MessageCircle, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -47,6 +47,17 @@ export function PostInteractions({
   const [likePending, setLikePending] = useState(false);
   const [bookmarkPending, setBookmarkPending] = useState(false);
   const [commentPending, setCommentPending] = useState(false);
+  const renderedComments = useMemo(
+    () =>
+      comments.map((comment) => ({
+        ...comment,
+        displayCreatedAt: new Date(comment.createdAt).toLocaleString('ko-KR', {
+          dateStyle: 'short',
+          timeStyle: 'short',
+        }),
+      })),
+    [comments]
+  );
 
   const moveToLoginIfNeeded = () => {
     if (!currentUserId) {
@@ -268,8 +279,8 @@ export function PostInteractions({
       </div>
 
       <div className="space-y-3">
-        {comments.length > 0 ? (
-          comments.map((comment) => (
+        {renderedComments.length > 0 ? (
+          renderedComments.map((comment) => (
             <article
               key={comment.id}
               className={cn(
@@ -281,12 +292,7 @@ export function PostInteractions({
                 <div className="flex items-center gap-2 text-[11px] text-gray-500">
                   <span className="font-medium text-gray-300">{comment.author}</span>
                   <span>•</span>
-                  <span>
-                    {new Date(comment.createdAt).toLocaleString('ko-KR', {
-                      dateStyle: 'short',
-                      timeStyle: 'short',
-                    })}
-                  </span>
+                  <span>{comment.displayCreatedAt}</span>
                   {comment.pending ? <span>• 전송중...</span> : null}
                 </div>
                 {!comment.pending ? (

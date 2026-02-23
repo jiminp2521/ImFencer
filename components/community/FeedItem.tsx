@@ -1,6 +1,9 @@
+'use client';
+
 import Link from 'next/link';
 import Image from 'next/image';
 import { memo } from 'react';
+import { useRouter } from 'next/navigation';
 import { Heart, MessageCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
@@ -46,10 +49,18 @@ export const FeedItem = memo(function FeedItem({
     likeCount = 0,
     commentCount = 0,
 }: FeedItemProps) {
+    const router = useRouter();
+    const prefetchPost = () => {
+        router.prefetch(`/posts/${id}`);
+    };
+
     return (
         <Link
             href={`/posts/${id}`}
             prefetch={false}
+            onMouseEnter={prefetchPost}
+            onTouchStart={prefetchPost}
+            onFocus={prefetchPost}
             className="imf-panel block p-4 transition-colors hover:border-white/30 hover:bg-slate-900/75 active:scale-[0.997] [content-visibility:auto] [contain-intrinsic-size:220px]"
         >
             <div className="flex gap-3">

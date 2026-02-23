@@ -4,6 +4,8 @@ import { notFound } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { createClient } from '@/lib/supabase-server';
+import { createPublicClient } from '@/lib/supabase-public';
+import { getAuthenticatedUserId } from '@/lib/auth-user';
 import { PostInteractions } from '@/components/community/PostInteractions';
 import { StartChatButton } from '@/components/chat/StartChatButton';
 
@@ -19,13 +21,10 @@ const categoryMap: Record<string, string> = {
 
 export default async function PostDetailPage({ params }: PostPageProps) {
   const { id } = await params;
-  const supabase = await createClient();
+  const publicSupabase = createPublicClient();
+  const serverSupabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: post, error } = await supabase
+  const postPromise = publicSupabase
     .from('posts')
     .select(`
       id,
@@ -41,44 +40,52 @@ export default async function PostDetailPage({ params }: PostPageProps) {
     .eq('id', id)
     .single();
 
-  if (error || !post) {
+  const likesCountPromise = publicSupabase
+    .from('post_likes')
+    .select('*', { count: 'exact', head: true })
+    .eq('post_id', id);
+
+  const commentsPromise = publicSupabase
+    .from('comments')
+    .select(`
+      id,
+      author_id,
+      content,
+      created_at,
+      profiles:author_id (username)
+    `)
+    .eq('post_id', id)
+    .is('parent_id', null)
+    .order('created_at', { ascending: true });
+
+  const [postResult, likesResult, commentsResult, currentUserId] = await Promise.all([
+    postPromise,
+    likesCountPromise,
+    commentsPromise,
+    getAuthenticatedUserId(serverSupabase),
+  ]);
+
+  const post = postResult.data;
+  if (postResult.error || !post) {
     notFound();
   }
 
-  const [likesResult, likedResult, bookmarkedResult, commentsResult] = await Promise.all([
-    supabase
-      .from('post_likes')
-      .select('*', { count: 'exact', head: true })
-      .eq('post_id', id),
-    user
-      ? supabase
+  const [likedResult, bookmarkedResult] = currentUserId
+    ? await Promise.all([
+        serverSupabase
           .from('post_likes')
           .select('post_id')
           .eq('post_id', id)
-          .eq('user_id', user.id)
-          .maybeSingle()
-      : Promise.resolve({ data: null, error: null }),
-    user
-      ? supabase
+          .eq('user_id', currentUserId)
+          .maybeSingle(),
+        serverSupabase
           .from('post_bookmarks')
           .select('post_id')
           .eq('post_id', id)
-          .eq('user_id', user.id)
-          .maybeSingle()
-      : Promise.resolve({ data: null, error: null }),
-    supabase
-      .from('comments')
-      .select(`
-        id,
-        author_id,
-        content,
-        created_at,
-        profiles:author_id (username)
-      `)
-      .eq('post_id', id)
-      .is('parent_id', null)
-      .order('created_at', { ascending: true }),
-  ]);
+          .eq('user_id', currentUserId)
+          .maybeSingle(),
+      ])
+    : [{ data: null, error: null }, { data: null, error: null }];
 
   if (likesResult.error) {
     console.error('Error fetching likes count:', likesResult.error);
@@ -161,7 +168,6 @@ export default async function PostDetailPage({ params }: PostPageProps) {
                 alt={post.title}
                 fill
                 sizes="(max-width: 768px) 100vw, 720px"
-                unoptimized
                 className="object-cover"
               />
             </div>
@@ -186,7 +192,7 @@ export default async function PostDetailPage({ params }: PostPageProps) {
           postId={post.id}
           postTitle={post.title}
           postAuthorId={post.author_id}
-          currentUserId={user?.id || null}
+          currentUserId={currentUserId}
           initialLiked={Boolean(likedResult.data)}
           initialBookmarked={Boolean(bookmarkedResult.data)}
           initialLikeCount={likesResult.count || 0}

@@ -6,6 +6,8 @@ import { Loader2, MessageCircle } from 'lucide-react';
 import type { VariantProps } from 'class-variance-authority';
 import { Button, buttonVariants } from '@/components/ui/button';
 
+let didPrefetchChatPage = false;
+
 type ButtonVariantProps = VariantProps<typeof buttonVariants>;
 
 type StartChatResponse =
@@ -48,6 +50,8 @@ export function StartChatButton({
   const [pending, setPending] = useState(false);
 
   useEffect(() => {
+    if (didPrefetchChatPage) return;
+    didPrefetchChatPage = true;
     router.prefetch('/chat');
   }, [router]);
 
