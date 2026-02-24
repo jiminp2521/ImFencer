@@ -34,12 +34,15 @@ export default async function FencingCompetitionsPage() {
   const competitions = (data || []) as CompetitionRow[];
 
   return (
-    <div className="min-h-screen pb-20">
-      <header className="sticky top-0 z-40 bg-black/90 backdrop-blur border-b border-white/10 h-14 px-4 flex items-center">
-        <Link href="/fencing" className="text-gray-400 hover:text-white transition-colors">
-          <ChevronLeft className="w-6 h-6" />
-        </Link>
-        <h1 className="text-base font-semibold text-white ml-2">대회 정보</h1>
+    <div className="imf-page">
+      <header className="imf-topbar">
+        <div className="flex min-w-0 items-center">
+          <Link href="/fencing" className="imf-icon-button h-8 w-8 rounded-lg">
+            <ChevronLeft className="h-5 w-5" />
+          </Link>
+          <h1 className="ml-2 truncate text-base font-semibold text-white">대회 정보</h1>
+        </div>
+        <div className="h-8 w-8" aria-hidden />
       </header>
 
       <main className="px-4 py-4 space-y-2">
@@ -50,27 +53,27 @@ export default async function FencingCompetitionsPage() {
             return (
               <article
                 key={competition.id}
-                className="rounded-xl border border-white/10 bg-gray-950 px-4 py-3 space-y-2"
+                className="imf-panel space-y-2 px-4 py-3"
               >
                 <div className="flex items-start justify-between gap-2">
                   <p className="text-sm font-semibold text-white">{competition.title}</p>
                   <Badge
                     className={
                       hasResult
-                        ? 'border-gray-700 bg-gray-800/60 text-gray-300'
-                        : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                        ? 'border-white/20 bg-black/40 text-slate-300'
+                        : 'border-white/25 bg-white/10 text-white'
                     }
                   >
                     {hasResult ? '결과 등록' : '예정'}
                   </Badge>
                 </div>
-                <p className="text-xs text-gray-400">{competition.location}</p>
-                <p className="text-xs text-gray-500">{formatDateTime(competition.date)}</p>
+                <p className="text-xs text-slate-400">{competition.location}</p>
+                <p className="text-xs text-slate-500">{formatDateTime(competition.date)}</p>
               </article>
             );
           })
         ) : (
-          <div className="rounded-xl border border-white/10 bg-gray-950 px-4 py-14 text-center text-sm text-gray-500">
+          <div className="imf-panel px-4 py-14 text-center text-sm text-slate-500">
             등록된 대회 정보가 없습니다.
           </div>
         )}

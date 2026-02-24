@@ -90,35 +90,38 @@ export default async function FencingClubsPage({ searchParams }: ClubsPageProps)
   );
 
   return (
-    <div className="min-h-screen pb-20">
-      <header className="sticky top-0 z-40 bg-black/90 backdrop-blur border-b border-white/10 h-14 px-4 flex items-center">
-        <Link href="/fencing" className="text-gray-400 hover:text-white transition-colors">
-          <ChevronLeft className="w-6 h-6" />
-        </Link>
-        <h1 className="text-base font-semibold text-white ml-2">주변 클럽 찾기</h1>
+    <div className="imf-page">
+      <header className="imf-topbar">
+        <div className="flex min-w-0 items-center">
+          <Link href="/fencing" className="imf-icon-button h-8 w-8 rounded-lg">
+            <ChevronLeft className="h-5 w-5" />
+          </Link>
+          <h1 className="ml-2 truncate text-base font-semibold text-white">주변 클럽 찾기</h1>
+        </div>
+        <div className="h-8 w-8" aria-hidden />
       </header>
 
-      <div className="px-4 py-3 border-b border-white/5 space-y-2">
+      <div className="space-y-2 border-b border-white/10 px-4 py-3">
         <form action="/fencing/clubs" className="flex gap-2">
           <input
             type="text"
             name="q"
             defaultValue={queryText}
             placeholder="도시/클럽명/주소 검색"
-            className="h-9 w-full rounded-md border border-gray-800 bg-gray-950 px-3 text-sm text-gray-100 placeholder:text-gray-500 outline-none focus:border-blue-500/60"
+            className="imf-input"
           />
           <Button
             type="submit"
             variant="outline"
-            className="h-9 border-gray-700 bg-gray-950 text-gray-200 hover:bg-gray-900"
+            className="h-9 border-white/20 bg-black/50 text-slate-200 hover:bg-white/10"
           >
             검색
           </Button>
         </form>
         {myClubId ? (
-          <p className="text-xs text-emerald-400">내 소속 클럽이 설정되어 있습니다.</p>
+          <p className="text-xs text-slate-300">내 소속 클럽이 설정되어 있습니다.</p>
         ) : (
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-slate-500">
             소속 클럽을 설정하면 커뮤니티에서 `내 클럽` 피드를 볼 수 있습니다.
           </p>
         )}
@@ -126,9 +129,9 @@ export default async function FencingClubsPage({ searchParams }: ClubsPageProps)
 
       <main className="px-4 py-4 space-y-2">
         {schemaMissing ? (
-          <section className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 space-y-1">
-            <p className="text-sm font-semibold text-amber-300">클럽 테이블이 아직 없습니다.</p>
-            <p className="text-xs text-amber-200/90">DB에 `migration.sql`의 펜싱 섹션을 반영해주세요.</p>
+          <section className="imf-panel space-y-1 border-white/20 bg-white/5">
+            <p className="text-sm font-semibold text-slate-200">클럽 테이블이 아직 없습니다.</p>
+            <p className="text-xs text-slate-400">DB에 `migration.sql`의 펜싱 섹션을 반영해주세요.</p>
           </section>
         ) : null}
 
@@ -136,28 +139,28 @@ export default async function FencingClubsPage({ searchParams }: ClubsPageProps)
           clubs.map((club) => (
             <article
               key={club.id}
-              className="rounded-xl border border-white/10 bg-gray-950 px-4 py-3 space-y-3"
+              className="imf-panel space-y-3 px-4 py-3"
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-sm font-semibold text-white">{club.name}</p>
-                  <p className="text-xs text-gray-400">{club.city}</p>
+                  <p className="text-xs text-slate-400">{club.city}</p>
                 </div>
-                <Badge className="border-white/10 bg-gray-900 text-gray-300">
+                <Badge className="border-white/20 bg-black/40 text-slate-300">
                   클래스 {classCountByClub.get(club.id) || 0}
                 </Badge>
               </div>
 
-              <p className="text-xs text-gray-300">{club.description || '클럽 소개가 아직 등록되지 않았습니다.'}</p>
-              <p className="text-xs text-gray-500">{club.address}</p>
-              {club.phone ? <p className="text-xs text-gray-500">전화: {club.phone}</p> : null}
+              <p className="text-xs text-slate-300">{club.description || '클럽 소개가 아직 등록되지 않았습니다.'}</p>
+              <p className="text-xs text-slate-500">{club.address}</p>
+              {club.phone ? <p className="text-xs text-slate-500">전화: {club.phone}</p> : null}
 
               <div className="flex flex-wrap gap-2">
                 <Button
                   asChild
                   variant="outline"
                   size="sm"
-                  className="border-gray-700 bg-gray-900 text-gray-200 hover:bg-gray-800"
+                  className="border-white/20 bg-black/40 text-slate-200 hover:bg-white/10"
                 >
                   <a
                     href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
@@ -186,14 +189,14 @@ export default async function FencingClubsPage({ searchParams }: ClubsPageProps)
                     label="클럽 채팅"
                     size="sm"
                     variant="ghost"
-                    className="text-gray-300 hover:text-white"
+                    className="text-slate-300 hover:bg-white/10 hover:text-white"
                   />
                 ) : null}
               </div>
             </article>
           ))
         ) : (
-          <div className="rounded-xl border border-white/10 bg-gray-950 px-4 py-14 text-center text-sm text-gray-500">
+          <div className="imf-panel px-4 py-14 text-center text-sm text-slate-500">
             등록된 클럽 정보가 없습니다.
           </div>
         )}

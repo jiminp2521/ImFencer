@@ -165,7 +165,7 @@ export function ClassPaymentButton({
       type="button"
       onClick={handleClick}
       disabled={pending || reserved}
-      className={className || 'bg-blue-600 hover:bg-blue-700 text-white'}
+      className={className || 'bg-white text-black hover:bg-slate-200'}
     >
       {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
       <span>{reserved ? '예약 완료' : '결제 후 예약'}</span>

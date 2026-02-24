@@ -130,20 +130,20 @@ export function ProfileMenuButton({ userId, username }: ProfileMenuButtonProps) 
         </SheetHeader>
 
         <div className="px-4 pt-2 space-y-2">
-          <Link href="/profile" onClick={close} className={cn(itemClass, 'border-amber-300/25 bg-amber-500/10')}>
+          <Link href="/profile" onClick={close} className={cn(itemClass, 'border-white/20 bg-white/5')}>
             <span className="flex items-center gap-2">
-              <Trophy className="h-4 w-4 text-amber-200" />
+              <Trophy className="h-4 w-4 text-slate-200" />
               커리어 쇼케이스
             </span>
-            <span className="text-xs text-amber-200/80">전시</span>
+            <span className="text-xs text-slate-400">전시</span>
           </Link>
 
-          <Link href="/market" onClick={close} className={cn(itemClass, 'border-emerald-300/20 bg-emerald-500/10')}>
+          <Link href="/market" onClick={close} className={cn(itemClass, 'border-white/20 bg-black/60')}>
             <span className="flex items-center gap-2">
-              <Store className="h-4 w-4 text-emerald-200" />
+              <Store className="h-4 w-4 text-slate-200" />
               아이템 마켓
             </span>
-            <span className="text-xs text-emerald-200/80">탐색</span>
+            <span className="text-xs text-slate-400">탐색</span>
           </Link>
 
           <Link href="/activity" onClick={close} className={itemClass}>

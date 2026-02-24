@@ -163,24 +163,27 @@ export default async function FencingClassesPage({ searchParams }: ClassesPagePr
   const schemaMissing = classesResult.error?.code === '42P01';
 
   return (
-    <div className="min-h-screen pb-20">
-      <header className="sticky top-0 z-40 bg-black/90 backdrop-blur border-b border-white/10 h-14 px-4 flex items-center">
-        <Link href="/fencing" className="text-gray-400 hover:text-white transition-colors">
-          <ChevronLeft className="w-6 h-6" />
-        </Link>
-        <h1 className="text-base font-semibold text-white ml-2">원데이클래스 · 오픈피스트</h1>
+    <div className="imf-page">
+      <header className="imf-topbar">
+        <div className="flex min-w-0 items-center">
+          <Link href="/fencing" className="imf-icon-button h-8 w-8 rounded-lg">
+            <ChevronLeft className="h-5 w-5" />
+          </Link>
+          <h1 className="ml-2 truncate text-base font-semibold text-white">원데이클래스 · 오픈피스트</h1>
+        </div>
+        <div className="h-8 w-8" aria-hidden />
       </header>
 
-      <div className="px-4 py-3 border-b border-white/5">
+      <div className="px-4 py-3 border-b border-white/10">
         <div className="flex gap-2 overflow-x-auto no-scrollbar">
           {kindFilters.map((filter) => (
             <Link
               key={filter.value}
               href={buildHref(filter.value)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition-colors ${
+              className={`imf-chip whitespace-nowrap ${
                 selectedKind === filter.value
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-900 text-gray-400 border border-gray-800'
+                  ? 'imf-chip-active'
+                  : ''
               }`}
             >
               {filter.label}
@@ -191,9 +194,9 @@ export default async function FencingClassesPage({ searchParams }: ClassesPagePr
 
       <main className="px-4 py-4 space-y-2">
         {schemaMissing ? (
-          <section className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 space-y-1">
-            <p className="text-sm font-semibold text-amber-300">클래스 테이블이 아직 없습니다.</p>
-            <p className="text-xs text-amber-200/90">DB에 `migration.sql`의 펜싱 섹션을 반영해주세요.</p>
+          <section className="imf-panel space-y-1 border-white/20 bg-white/5">
+            <p className="text-sm font-semibold text-slate-200">클래스 테이블이 아직 없습니다.</p>
+            <p className="text-xs text-slate-400">DB에 `migration.sql`의 펜싱 섹션을 반영해주세요.</p>
           </section>
         ) : null}
 
@@ -208,12 +211,12 @@ export default async function FencingClassesPage({ searchParams }: ClassesPagePr
             return (
               <article
                 key={classItem.id}
-                className="rounded-xl border border-white/10 bg-gray-950 px-4 py-3 space-y-3"
+                className="imf-panel space-y-3 px-4 py-3"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="text-sm font-semibold text-white">{classItem.title}</p>
-                    <p className="text-xs text-gray-400">
+                    <p className="text-xs text-slate-400">
                       {club?.name || '클럽 미지정'} · {coach?.username || '코치 미지정'}
                     </p>
                   </div>
@@ -221,8 +224,8 @@ export default async function FencingClassesPage({ searchParams }: ClassesPagePr
                     <Badge
                       className={
                         kind === 'openpiste'
-                          ? 'border-violet-500/30 bg-violet-500/10 text-violet-300'
-                          : 'border-sky-500/30 bg-sky-500/10 text-sky-300'
+                          ? 'border-white/25 bg-white/10 text-slate-200'
+                          : 'border-white/20 bg-black/40 text-slate-300'
                       }
                     >
                       {kind === 'openpiste' ? '오픈피스트' : '원데이클래스'}
@@ -230,8 +233,8 @@ export default async function FencingClassesPage({ searchParams }: ClassesPagePr
                     <Badge
                       className={
                         isClosed
-                          ? 'border-gray-700 bg-gray-800/60 text-gray-300'
-                          : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                          ? 'border-white/20 bg-black/45 text-slate-400'
+                          : 'border-white/25 bg-white/10 text-white'
                       }
                     >
                       {isClosed ? '마감' : '예약 가능'}
@@ -239,7 +242,7 @@ export default async function FencingClassesPage({ searchParams }: ClassesPagePr
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-1.5 text-[11px] text-gray-500">
+                <div className="flex flex-wrap gap-1.5 text-[11px] text-slate-500">
                   {classItem.weapon_type ? (
                     <span>{weaponLabelMap[classItem.weapon_type] || classItem.weapon_type}</span>
                   ) : null}
@@ -250,14 +253,14 @@ export default async function FencingClassesPage({ searchParams }: ClassesPagePr
                   <span>• {classItem.capacity}명</span>
                 </div>
 
-                <p className="text-xs text-gray-400">
+                <p className="text-xs text-slate-400">
                   {formatDateTime(classItem.start_at)} ~ {formatDateTime(classItem.end_at)}
                 </p>
-                <p className="text-sm font-semibold text-blue-400">
+                <p className="text-sm font-semibold text-white">
                   {classItem.price.toLocaleString('ko-KR')}원
                 </p>
 
-                {classItem.description ? <p className="text-xs text-gray-300">{classItem.description}</p> : null}
+                {classItem.description ? <p className="text-xs text-slate-300">{classItem.description}</p> : null}
 
                 <div className="flex gap-2">
                   <ClassPaymentButton
@@ -265,7 +268,7 @@ export default async function FencingClassesPage({ searchParams }: ClassesPagePr
                     classTitle={classItem.title}
                     initialReserved={myReservedClassIds.has(classItem.id)}
                     loginNext="/fencing/classes"
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                    className="bg-white text-black hover:bg-slate-200"
                   />
                   {contactUserId ? (
                     <StartChatButton
@@ -276,7 +279,7 @@ export default async function FencingClassesPage({ searchParams }: ClassesPagePr
                       label="문의 채팅"
                       size="default"
                       variant="outline"
-                      className="border-gray-700 bg-gray-900 text-gray-200 hover:bg-gray-800"
+                      className="border-white/20 bg-black/40 text-slate-200 hover:bg-white/10"
                     />
                   ) : null}
                 </div>
@@ -284,7 +287,7 @@ export default async function FencingClassesPage({ searchParams }: ClassesPagePr
             );
           })
         ) : (
-          <div className="rounded-xl border border-white/10 bg-gray-950 px-4 py-14 text-center text-sm text-gray-500">
+          <div className="imf-panel px-4 py-14 text-center text-sm text-slate-500">
             등록된 원데이클래스/오픈피스트가 없습니다.
           </div>
         )}

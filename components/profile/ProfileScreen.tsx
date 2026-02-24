@@ -229,8 +229,8 @@ export async function ProfileScreen({
       )}
 
       <main className="p-4 space-y-4">
-        <section className="imf-panel flex items-center gap-4 border-cyan-300/20 bg-[linear-gradient(135deg,rgba(7,11,22,0.94),rgba(7,7,11,0.95))]">
-          <Avatar className="h-20 w-20 rounded-2xl border-2 border-cyan-300/30 bg-black/50">
+        <section className="imf-panel flex items-center gap-4 border-white/20 bg-[linear-gradient(135deg,rgba(12,12,12,0.98),rgba(7,7,7,0.94))]">
+          <Avatar className="h-20 w-20 rounded-2xl border-2 border-white/20 bg-black/60">
             <AvatarImage src={avatarSrc ?? undefined} />
             <AvatarFallback className="rounded-2xl">{displayName.slice(0, 2).toUpperCase()}</AvatarFallback>
           </Avatar>
@@ -248,7 +248,7 @@ export async function ProfileScreen({
             <p className="text-sm text-slate-400">{bio}</p>
             {isOwner ? (
               <div className="flex flex-wrap gap-2 pt-1">
-                <Link href="/market" className="imf-pill border-emerald-300/35 bg-emerald-500/10 text-emerald-100">
+                <Link href="/market" className="imf-pill border-white/20 bg-black/40 text-slate-200">
                   아이템 마켓
                 </Link>
               </div>
@@ -287,22 +287,22 @@ export async function ProfileScreen({
 
         <section
           id="career-showcase"
-          className="imf-panel space-y-3 border-amber-300/20 bg-[linear-gradient(128deg,rgba(43,26,8,0.9),rgba(17,10,4,0.96))]"
+          className="imf-panel space-y-3 border-white/20 bg-[linear-gradient(128deg,rgba(19,19,19,0.96),rgba(8,8,8,0.98))]"
         >
           <div className="flex items-center justify-between gap-2">
-            <h3 className="text-lg font-semibold text-amber-100">Career Showcase</h3>
-            <Badge className="border-amber-300/30 bg-amber-400/15 text-amber-100">{showcaseTitle}</Badge>
+            <h3 className="text-lg font-semibold text-white">Career Showcase</h3>
+            <Badge className="border-white/20 bg-white/10 text-slate-100">{showcaseTitle}</Badge>
           </div>
-          <p className="text-xs text-amber-50/85">{showcaseSummary}</p>
+          <p className="text-xs text-slate-300">{showcaseSummary}</p>
           <div className="grid grid-cols-3 gap-2">
             {highlightItems.map((item) => (
-              <div key={item.label} className="rounded-xl border border-amber-200/20 bg-black/30 p-2.5 text-center">
-                <p className="text-[10px] text-amber-100/70">{item.label}</p>
-                <p className="mt-1 text-sm font-semibold text-amber-50">{item.value}</p>
+              <div key={item.label} className="rounded-xl border border-white/10 bg-black/40 p-2.5 text-center">
+                <p className="text-[10px] text-slate-400">{item.label}</p>
+                <p className="mt-1 text-sm font-semibold text-slate-100">{item.value}</p>
               </div>
             ))}
           </div>
-          <p className="text-xs text-amber-100/70">
+          <p className="text-xs text-slate-400">
             {isOwner
               ? '프로필 메뉴에서 내 활동과 콘텐츠를 관리할 수 있습니다.'
               : `${displayName}님의 경기/커뮤니티 활동이 쇼케이스로 정리되어 있습니다.`}

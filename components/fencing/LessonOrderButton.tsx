@@ -76,7 +76,7 @@ export function LessonOrderButton({
       type="button"
       onClick={handleOrder}
       disabled={pending || ordered || isMyLesson}
-      className={className || 'bg-emerald-600 hover:bg-emerald-700 text-white'}
+      className={className || 'bg-white text-black hover:bg-slate-200'}
     >
       {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
       <span>

@@ -139,15 +139,15 @@ export default async function FencingLessonsPage() {
   const schemaMissing = lessonsResult.error?.code === '42P01';
 
   return (
-    <div className="min-h-screen pb-20">
-      <header className="sticky top-0 z-40 bg-black/90 backdrop-blur border-b border-white/10 h-14 px-4 flex items-center justify-between">
+    <div className="imf-page">
+      <header className="imf-topbar">
         <div className="flex items-center min-w-0">
-          <Link href="/fencing" className="text-gray-400 hover:text-white transition-colors">
-            <ChevronLeft className="w-6 h-6" />
+          <Link href="/fencing" className="imf-icon-button h-8 w-8 rounded-lg">
+            <ChevronLeft className="h-5 w-5" />
           </Link>
-          <h1 className="text-base font-semibold text-white ml-2">레슨 찾기</h1>
+          <h1 className="ml-2 text-base font-semibold text-white">레슨 찾기</h1>
         </div>
-        <Button asChild size="sm" className="h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white px-3 text-xs">
+        <Button asChild size="sm" className="h-8 rounded-full bg-white px-3 text-xs text-black hover:bg-slate-200">
           <Link href={user ? '/fencing/lessons/write' : '/login?next=%2Ffencing%2Flessons%2Fwrite'}>
             레슨 등록
           </Link>
@@ -156,9 +156,9 @@ export default async function FencingLessonsPage() {
 
       <main className="px-4 py-4 space-y-2">
         {schemaMissing ? (
-          <section className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 space-y-1">
-            <p className="text-sm font-semibold text-amber-300">레슨 테이블이 아직 없습니다.</p>
-            <p className="text-xs text-amber-200/90">DB에 `migration.sql`의 펜싱 섹션을 반영해주세요.</p>
+          <section className="imf-panel space-y-1 border-white/20 bg-white/5">
+            <p className="text-sm font-semibold text-slate-200">레슨 테이블이 아직 없습니다.</p>
+            <p className="text-xs text-slate-400">DB에 `migration.sql`의 펜싱 섹션을 반영해주세요.</p>
           </section>
         ) : null}
 
@@ -169,13 +169,13 @@ export default async function FencingLessonsPage() {
             return (
               <article
                 key={lesson.id}
-                className="rounded-xl border border-white/10 bg-gray-950 px-4 py-3 space-y-3"
+                className="imf-panel space-y-3 px-4 py-3"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="text-sm font-semibold text-white">{lesson.title}</p>
-                    <p className="text-xs text-gray-400">코치: {coach?.username || '알 수 없음'}</p>
-                    <p className="text-[11px] text-amber-300">
+                    <p className="text-xs text-slate-400">코치: {coach?.username || '알 수 없음'}</p>
+                    <p className="text-[11px] text-slate-300">
                       {ratingMap.has(lesson.id)
                         ? `평점 ${(
                             ratingMap.get(lesson.id)!.sum / ratingMap.get(lesson.id)!.count
@@ -183,24 +183,24 @@ export default async function FencingLessonsPage() {
                         : '아직 후기가 없습니다.'}
                     </p>
                   </div>
-                  <Badge className="border-white/10 bg-gray-900 text-gray-300">
+                  <Badge className="border-white/20 bg-black/40 text-slate-300">
                     {lessonModeMap[lesson.lesson_mode] || lesson.lesson_mode}
                   </Badge>
                 </div>
 
-                <div className="flex flex-wrap gap-1.5 text-[11px] text-gray-500">
+                <div className="flex flex-wrap gap-1.5 text-[11px] text-slate-500">
                   {lesson.weapon_type ? <span>{weaponLabelMap[lesson.weapon_type] || lesson.weapon_type}</span> : null}
                   <span>• {lesson.duration_minutes}분</span>
                   <span>• 최대 {lesson.max_students}명</span>
                   {lesson.location_text ? <span>• {lesson.location_text}</span> : null}
                 </div>
 
-                <p className="text-sm font-semibold text-emerald-400">
+                <p className="text-sm font-semibold text-white">
                   {lesson.price.toLocaleString('ko-KR')}원
                 </p>
 
                 {lesson.description ? (
-                  <p className="text-xs text-gray-300 whitespace-pre-wrap">{lesson.description}</p>
+                  <p className="text-xs whitespace-pre-wrap text-slate-300">{lesson.description}</p>
                 ) : null}
 
                 <div className="flex gap-2">
@@ -212,7 +212,7 @@ export default async function FencingLessonsPage() {
                     label="레슨 문의"
                     size="default"
                     variant="outline"
-                    className="border-gray-700 bg-gray-900 text-gray-200 hover:bg-gray-800"
+                    className="border-white/20 bg-black/40 text-slate-200 hover:bg-white/10"
                   />
                   <LessonOrderButton
                     lessonId={lesson.id}
@@ -221,14 +221,14 @@ export default async function FencingLessonsPage() {
                     currentUserId={user?.id || null}
                     initialOrdered={myLessonOrderIds.has(lesson.id)}
                     loginNext="/fencing/lessons"
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                    className="bg-white text-black hover:bg-slate-200"
                   />
                   {user && user.id !== lesson.coach_id && myLessonOrderIds.has(lesson.id) ? (
                     <Button
                       asChild
                       variant="outline"
                       size="default"
-                      className="border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20"
+                      className="border-white/20 bg-black/45 text-slate-200 hover:bg-white/10"
                     >
                       <Link href={`/fencing/lessons/${lesson.id}/review`}>
                         {myReviewedLessonIds.has(lesson.id) ? '후기 수정' : '후기 작성'}
@@ -240,9 +240,9 @@ export default async function FencingLessonsPage() {
             );
           })
         ) : (
-          <div className="rounded-xl border border-white/10 bg-gray-950 px-4 py-14 text-center text-sm text-gray-500 space-y-2">
+          <div className="imf-panel space-y-2 px-4 py-14 text-center text-sm text-slate-500">
             <p>등록된 레슨이 없습니다.</p>
-            <p className="text-xs text-gray-600">전문 선수가 직접 레슨을 등록해 거래를 시작할 수 있습니다.</p>
+            <p className="text-xs text-slate-600">전문 선수가 직접 레슨을 등록해 거래를 시작할 수 있습니다.</p>
           </div>
         )}
       </main>

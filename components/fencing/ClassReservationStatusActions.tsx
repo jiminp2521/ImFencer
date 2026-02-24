@@ -59,7 +59,7 @@ export function ClassReservationStatusActions({
         size="sm"
         onClick={() => updateStatus('confirmed')}
         disabled={pending || status === 'confirmed'}
-        className="bg-emerald-600 hover:bg-emerald-700 text-white"
+        className="bg-white text-black hover:bg-slate-200"
       >
         {pending && status !== 'confirmed' ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
         <span>확정</span>
@@ -70,7 +70,7 @@ export function ClassReservationStatusActions({
         onClick={() => updateStatus('cancelled')}
         disabled={pending || status === 'cancelled'}
         variant="outline"
-        className="border-red-500/40 bg-red-500/10 text-red-300 hover:bg-red-500/20"
+        className="border-white/20 bg-black/45 text-slate-200 hover:bg-white/10"
       >
         {pending && status !== 'cancelled' ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
         <span>취소</span>

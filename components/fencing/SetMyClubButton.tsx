@@ -68,8 +68,8 @@ export function SetMyClubButton({
       className={
         className ||
         (selected
-          ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-          : 'border-gray-700 bg-gray-900 text-gray-200 hover:bg-gray-800')
+          ? 'bg-white text-black hover:bg-slate-200'
+          : 'border-white/20 bg-black/45 text-slate-200 hover:bg-white/10')
       }
     >
       {pending ? (

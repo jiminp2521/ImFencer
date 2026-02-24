@@ -110,8 +110,8 @@ export function BottomNav() {
     }
 
     return (
-        <nav className="app-bottom-nav fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-black/90 backdrop-blur-2xl">
-            <div className="flex h-16 items-center justify-around gap-1 px-2">
+        <nav className="app-bottom-nav fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-black/90 backdrop-blur-3xl">
+            <div className="mx-auto flex h-16 max-w-[640px] items-center justify-around gap-1 px-2">
                 {tabs.map((tab) => {
                     const isActive =
                         tab.href === '/'
@@ -137,14 +137,20 @@ export function BottomNav() {
                                 warmTabData(tab.href);
                             }}
                             className={cn(
-                                'flex min-w-[58px] flex-col items-center justify-center gap-1 rounded-2xl px-2 py-1.5 transition-colors duration-200',
+                                'relative flex min-w-[58px] flex-col items-center justify-center gap-0.5 rounded-2xl px-2 py-1.5 transition-all duration-200',
                                 isActive
-                                    ? 'bg-white/15 text-white'
-                                    : 'text-slate-500 hover:bg-white/5 hover:text-slate-200'
+                                    ? 'bg-white/[0.14] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]'
+                                    : 'text-slate-500 hover:bg-white/[0.06] hover:text-slate-200'
                             )}
                         >
-                            <Icon className={cn("h-6 w-6", isActive && "fill-current")} strokeWidth={isActive ? 2.5 : 2} />
+                            <Icon className={cn("h-[22px] w-[22px]", isActive && "fill-current")} strokeWidth={isActive ? 2.4 : 2} />
                             <span className="text-[10px] font-medium">{tab.name}</span>
+                            <span
+                                className={cn(
+                                    "mt-0.5 h-0.5 w-5 rounded-full transition-all",
+                                    isActive ? "bg-white/80 opacity-100" : "bg-transparent opacity-0"
+                                )}
+                            />
                         </Link>
                     );
                 })}
