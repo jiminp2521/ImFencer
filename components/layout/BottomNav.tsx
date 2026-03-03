@@ -60,7 +60,7 @@ export function BottomNav() {
     const pathname = usePathname();
     const router = useRouter();
     const prefetchedRef = useRef(false);
-    const hideNavPrefixes = ['/login', '/signup', '/write', '/auth', '/fencing/lessons/write', '/payments'];
+    const hideNavPrefixes = ['/login', '/signup', '/write', '/auth', '/fencing/lessons/write', '/payments', '/legal'];
     const shouldHideNav = hideNavPrefixes.some((prefix) => pathname.startsWith(prefix));
     const warmTabData = (href: string) => {
         const tab = tabs.find((item) => item.href === href);

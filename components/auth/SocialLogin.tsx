@@ -1,13 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
-import { ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
 
 interface SocialLoginProps {
     mode?: 'login' | 'signup';
@@ -33,7 +33,7 @@ type ConsentItem = {
     required: boolean;
     title: string;
     summary: string;
-    href?: string;
+    href: '/legal/terms' | '/legal/privacy';
     sections: ConsentSection[];
 };
 
@@ -49,6 +49,7 @@ const CONSENT_ITEMS: ConsentItem[] = [
         required: true,
         title: '만 14세 이상 확인',
         summary: '만 14세 미만은 법정대리인 동의 절차가 준비되기 전까지 가입할 수 없습니다.',
+        href: '/legal/terms',
         sections: [
             {
                 title: '① 가입 대상',
@@ -229,6 +230,7 @@ const CONSENT_ITEMS: ConsentItem[] = [
         required: false,
         title: '마케팅 정보 수신 동의',
         summary: '이벤트/혜택/업데이트 안내를 앱 푸시 또는 이메일로 수신합니다. 언제든 철회할 수 있습니다.',
+        href: '/legal/privacy',
         sections: [
             {
                 title: '① 수신 정보',
@@ -266,14 +268,26 @@ const createInitialConsents = (): Record<ConsentKey, boolean> => ({
     marketing: false,
 });
 
-const createInitialExpandedState = (): Record<ConsentKey, boolean> => ({
-    age14: false,
-    serviceTerms: false,
-    privacyCollection: false,
-    entrustmentNotice: false,
-    privacyPolicy: false,
-    marketing: false,
-});
+const CONSENT_DRAFT_STORAGE_KEY = 'imfencer-signup-consent-draft-v1';
+
+const parseSocialProvider = (value: string | null): SocialProvider | null => {
+    if (value === 'google' || value === 'kakao' || value === 'apple') {
+        return value;
+    }
+    return null;
+};
+
+const restoreConsents = (raw: unknown): Record<ConsentKey, boolean> => {
+    const initial = createInitialConsents();
+    if (!raw || typeof raw !== 'object') {
+        return initial;
+    }
+    const source = raw as Partial<Record<ConsentKey, unknown>>;
+    for (const key of Object.keys(initial) as ConsentKey[]) {
+        initial[key] = source[key] === true;
+    }
+    return initial;
+};
 
 const sanitizeNextPath = (value: string | null) => {
     if (!value) return '/';
@@ -286,7 +300,6 @@ export function SocialLogin({ mode = 'login' }: SocialLoginProps) {
     const [pendingProvider, setPendingProvider] = useState<SocialProvider | null>(null);
     const [consentProvider, setConsentProvider] = useState<SocialProvider | null>(null);
     const [consents, setConsents] = useState<Record<ConsentKey, boolean>>(createInitialConsents);
-    const [expandedItems, setExpandedItems] = useState<Record<ConsentKey, boolean>>(createInitialExpandedState);
     const [consentError, setConsentError] = useState<string | null>(null);
 
     const isSignup = mode === 'signup';
@@ -302,6 +315,88 @@ export function SocialLogin({ mode = 'login' }: SocialLoginProps) {
     );
     const requiredCount = REQUIRED_CONSENT_KEYS.length;
     const optionalCount = CONSENT_ITEMS.length - requiredCount;
+    const isConsentModalOpen = isSignup && Boolean(consentProvider);
+
+    useEffect(() => {
+        if (!isSignup) return;
+
+        const providerFromQuery = parseSocialProvider(new URLSearchParams(window.location.search).get('consentProvider'));
+        if (!providerFromQuery) return;
+
+        let restored = createInitialConsents();
+        try {
+            const raw = window.sessionStorage.getItem(CONSENT_DRAFT_STORAGE_KEY);
+            if (raw) {
+                const parsed = JSON.parse(raw) as { provider?: string; consents?: unknown };
+                if (parsed.provider === providerFromQuery) {
+                    restored = restoreConsents(parsed.consents);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to restore consent draft:', error);
+        }
+
+        setConsentProvider(providerFromQuery);
+        setConsents(restored);
+        setConsentError(null);
+    }, [isSignup]);
+
+    useEffect(() => {
+        if (!isConsentModalOpen) return;
+
+        const body = document.body;
+        const html = document.documentElement;
+        const scrollY = window.scrollY;
+
+        const previousBodyOverflow = body.style.overflow;
+        const previousBodyPosition = body.style.position;
+        const previousBodyTop = body.style.top;
+        const previousBodyLeft = body.style.left;
+        const previousBodyRight = body.style.right;
+        const previousBodyWidth = body.style.width;
+        const previousBodyOverscroll = body.style.overscrollBehavior;
+        const previousHtmlOverflow = html.style.overflow;
+        const previousHtmlOverscroll = html.style.overscrollBehavior;
+
+        body.style.overflow = 'hidden';
+        body.style.position = 'fixed';
+        body.style.top = `-${scrollY}px`;
+        body.style.left = '0';
+        body.style.right = '0';
+        body.style.width = '100%';
+        body.style.overscrollBehavior = 'none';
+        html.style.overflow = 'hidden';
+        html.style.overscrollBehavior = 'none';
+
+        return () => {
+            body.style.overflow = previousBodyOverflow;
+            body.style.position = previousBodyPosition;
+            body.style.top = previousBodyTop;
+            body.style.left = previousBodyLeft;
+            body.style.right = previousBodyRight;
+            body.style.width = previousBodyWidth;
+            body.style.overscrollBehavior = previousBodyOverscroll;
+            html.style.overflow = previousHtmlOverflow;
+            html.style.overscrollBehavior = previousHtmlOverscroll;
+            window.scrollTo(0, scrollY);
+        };
+    }, [isConsentModalOpen]);
+
+    useEffect(() => {
+        if (!isSignup || !consentProvider) return;
+
+        try {
+            window.sessionStorage.setItem(
+                CONSENT_DRAFT_STORAGE_KEY,
+                JSON.stringify({
+                    provider: consentProvider,
+                    consents,
+                })
+            );
+        } catch (error) {
+            console.error('Failed to save consent draft:', error);
+        }
+    }, [isSignup, consentProvider, consents]);
 
     const setAllConsents = (checked: boolean) => {
         const nextState = createInitialConsents();
@@ -318,17 +413,22 @@ export function SocialLogin({ mode = 'login' }: SocialLoginProps) {
         }));
     };
 
-    const toggleExpanded = (key: ConsentKey) => {
-        setExpandedItems((prev) => ({
-            ...prev,
-            [key]: !prev[key],
-        }));
-    };
-
     const closeConsentModal = () => {
         if (pendingProvider) return;
+        setConsents(createInitialConsents());
         setConsentProvider(null);
         setConsentError(null);
+
+        try {
+            window.sessionStorage.removeItem(CONSENT_DRAFT_STORAGE_KEY);
+        } catch (error) {
+            console.error('Failed to clear consent draft:', error);
+        }
+    };
+
+    const buildConsentHref = (path: '/legal/terms' | '/legal/privacy') => {
+        if (!consentProvider) return path;
+        return `${path}?consentProvider=${consentProvider}`;
     };
 
     const resolveRedirectTo = (isNative: boolean, authMode: AuthMode) => {
@@ -431,6 +531,20 @@ export function SocialLogin({ mode = 'login' }: SocialLoginProps) {
         if (pendingProvider) return;
 
         if (isSignup) {
+            let restored = createInitialConsents();
+            try {
+                const raw = window.sessionStorage.getItem(CONSENT_DRAFT_STORAGE_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw) as { provider?: string; consents?: unknown };
+                    if (parsed.provider === provider) {
+                        restored = restoreConsents(parsed.consents);
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to restore consent draft for provider:', error);
+            }
+
+            setConsents(restored);
             setConsentProvider(provider);
             setConsentError(null);
             return;
@@ -509,7 +623,7 @@ export function SocialLogin({ mode = 'login' }: SocialLoginProps) {
                     type="button"
                     variant="ghost"
                     onClick={() => handleSocialPress('apple')}
-                    className="relative h-12 w-full rounded-2xl border border-slate-600 bg-black text-white hover:bg-slate-900"
+                    className="relative h-12 w-full rounded-2xl border border-black bg-black text-white hover:bg-slate-900"
                     disabled={Boolean(pendingProvider)}
                 >
                     <div className="absolute left-5 w-5 h-5 flex items-center justify-center">
@@ -528,8 +642,8 @@ export function SocialLogin({ mode = 'login' }: SocialLoginProps) {
             </div>
 
             {isSignup && consentProvider ? (
-                <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/80 p-4 sm:items-center">
-                    <div className="w-full max-w-2xl rounded-2xl border border-white/10 bg-slate-950 shadow-2xl max-h-[88vh] overflow-hidden flex flex-col">
+                <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/80 px-4 pb-[calc(var(--safe-area-bottom)+12px)] pt-[calc(var(--safe-area-top)+12px)] overscroll-none sm:items-center sm:p-4">
+                    <div className="flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-slate-950 shadow-2xl max-h-[calc(100dvh-var(--safe-area-top)-var(--safe-area-bottom)-24px)] touch-pan-y overscroll-contain">
                         <div className="border-b border-white/10 px-4 py-4 sm:px-5">
                             <h3 className="text-base font-semibold text-white">
                                 {PROVIDER_LABEL[consentProvider]}로 가입하기
@@ -539,11 +653,14 @@ export function SocialLogin({ mode = 'login' }: SocialLoginProps) {
                             </p>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-5">
+                        <div
+                            className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 touch-pan-y sm:px-5"
+                            style={{ WebkitOverflowScrolling: 'touch' }}
+                        >
                             <div className="mb-3 rounded-xl border border-cyan-300/20 bg-cyan-500/10 px-3 py-2 text-[11px] leading-5 text-cyan-100">
                                 개인정보보호법, 앱스토어 정책, 운영정책 기준에 따라 동의 항목을 제공합니다.
                                 <br />
-                                항목별 “전문 보기”에서 실제 고지 내용을 확인할 수 있습니다.
+                                각 항목의 “원문 보기”로 이동해 실제 고지 내용을 확인할 수 있습니다.
                             </div>
 
                             <label className="mb-3 flex cursor-pointer items-center gap-2 rounded-lg border border-white/10 bg-black/40 px-3 py-2">
@@ -557,77 +674,53 @@ export function SocialLogin({ mode = 'login' }: SocialLoginProps) {
                             </label>
 
                             <div className="space-y-2">
-                                {CONSENT_ITEMS.map((item) => {
-                                    const expanded = expandedItems[item.key];
-                                    return (
-                                        <div
-                                            key={item.key}
-                                            className="rounded-xl border border-white/10 bg-black/30"
-                                        >
-                                            <div className="flex items-start gap-3 px-3 py-3">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={consents[item.key]}
-                                                    onChange={(event) => setConsent(item.key, event.target.checked)}
-                                                    className="mt-1 h-4 w-4 rounded border-slate-600 bg-black text-white"
-                                                />
-                                                <div className="min-w-0 flex-1">
-                                                    <div className="flex flex-wrap items-center gap-2">
-                                                        <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${item.required ? 'bg-rose-500/20 text-rose-100' : 'bg-slate-600/30 text-slate-200'}`}>
-                                                            {item.required ? '필수' : '선택'}
-                                                        </span>
-                                                        <p className="text-sm font-semibold text-slate-100">{item.title}</p>
-                                                    </div>
-                                                    <p className="mt-1 text-xs leading-5 text-slate-400">{item.summary}</p>
+                                {CONSENT_ITEMS.map((item) => (
+                                    <div
+                                        key={item.key}
+                                        className="rounded-xl border border-white/10 bg-black/30"
+                                    >
+                                        <div className="flex items-start gap-3 px-3 py-3">
+                                            <input
+                                                type="checkbox"
+                                                checked={consents[item.key]}
+                                                onChange={(event) => setConsent(item.key, event.target.checked)}
+                                                className="mt-1 h-4 w-4 rounded border-slate-600 bg-black text-white"
+                                            />
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${item.required ? 'bg-rose-500/20 text-rose-100' : 'bg-slate-600/30 text-slate-200'}`}>
+                                                        {item.required ? '필수' : '선택'}
+                                                    </span>
+                                                    <p className="text-sm font-semibold text-slate-100">{item.title}</p>
+                                                </div>
+                                                <p className="mt-1 text-xs leading-5 text-slate-400">{item.summary}</p>
 
-                                                    <div className="mt-2 flex flex-wrap items-center gap-3">
-                                                        {item.href ? (
-                                                            <Link
-                                                                href={item.href}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="inline-flex items-center gap-1 text-xs text-slate-300 underline underline-offset-2 hover:text-white"
-                                                            >
-                                                                약관/방침 원문
-                                                                <ExternalLink className="h-3.5 w-3.5" />
-                                                            </Link>
-                                                        ) : null}
-
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => toggleExpanded(item.key)}
-                                                            className="inline-flex items-center gap-1 text-xs text-slate-300 hover:text-white"
-                                                        >
-                                                            전문 {expanded ? '접기' : '보기'}
-                                                            {expanded ? (
-                                                                <ChevronUp className="h-3.5 w-3.5" />
-                                                            ) : (
-                                                                <ChevronDown className="h-3.5 w-3.5" />
-                                                            )}
-                                                        </button>
-                                                    </div>
+                                                <div className="mt-2">
+                                                    <Link
+                                                        href={buildConsentHref(item.href)}
+                                                        onClick={() => {
+                                                            try {
+                                                                window.sessionStorage.setItem(
+                                                                    CONSENT_DRAFT_STORAGE_KEY,
+                                                                    JSON.stringify({
+                                                                        provider: consentProvider,
+                                                                        consents,
+                                                                    })
+                                                                );
+                                                            } catch (error) {
+                                                                console.error('Failed to save consent draft before navigation:', error);
+                                                            }
+                                                        }}
+                                                        className="inline-flex items-center gap-1 text-xs text-slate-300 underline underline-offset-2 hover:text-white"
+                                                    >
+                                                        원문 보기
+                                                        <ExternalLink className="h-3.5 w-3.5" />
+                                                    </Link>
                                                 </div>
                                             </div>
-
-                                            {expanded ? (
-                                                <div className="border-t border-white/10 bg-slate-900/70 px-3 pb-3 pt-2">
-                                                    <div className="space-y-3">
-                                                        {item.sections.map((section) => (
-                                                            <div key={section.title} className="rounded-lg border border-white/5 bg-black/20 px-3 py-2">
-                                                                <p className="text-xs font-semibold text-slate-100">{section.title}</p>
-                                                                <div className="mt-1 space-y-1 text-[11px] leading-5 text-slate-300">
-                                                                    {section.lines.map((line) => (
-                                                                        <p key={`${section.title}-${line}`}>{line}</p>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            ) : null}
                                         </div>
-                                    );
-                                })}
+                                    </div>
+                                ))}
                             </div>
 
                             {consentError ? (

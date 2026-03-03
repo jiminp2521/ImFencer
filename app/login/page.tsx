@@ -128,9 +128,9 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="imf-page flex min-h-screen flex-col items-center justify-center p-4">
+    <div className="imf-page !h-[100dvh] !min-h-0 !overflow-hidden !pb-0 overscroll-none flex flex-col items-center justify-center p-4">
       <div className="mb-10 flex flex-col items-center gap-5">
-        <div className="imf-panel flex h-18 w-56 items-center justify-center p-3">
+        <div className="flex h-18 w-56 items-center justify-center p-3">
           <div className="relative h-12 w-44">
             <Image
               src="/app-logo.png"

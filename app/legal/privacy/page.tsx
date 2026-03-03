@@ -4,6 +4,19 @@ export const metadata = {
   title: '개인정보처리방침 | ImFencer',
 };
 
+type PrivacyPolicyPageProps = {
+  searchParams: Promise<{
+    consentProvider?: string;
+  }>;
+};
+
+const resolveBackHref = (value: string | undefined) => {
+  if (value === 'google' || value === 'kakao' || value === 'apple') {
+    return `/signup?consentProvider=${value}`;
+  }
+  return '/signup';
+};
+
 const collectionRows = [
   {
     category: '회원가입/인증',
@@ -67,18 +80,25 @@ const entrustmentRows = [
   },
 ];
 
-export default function PrivacyPolicyPage() {
+export default async function PrivacyPolicyPage({ searchParams }: PrivacyPolicyPageProps) {
+  const resolvedSearchParams = await searchParams;
+  const backHref = resolveBackHref(resolvedSearchParams.consentProvider);
+
   return (
     <main className="min-h-screen bg-black px-4 py-8 text-slate-200">
       <div className="mx-auto max-w-5xl space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
+          <Link href={backHref} className="inline-flex items-center gap-1 text-sm text-slate-300 hover:text-white">
+            <span aria-hidden>←</span>
+            뒤로가기
+          </Link>
+        </div>
+
+        <div>
           <div>
             <h1 className="text-2xl font-bold text-white">개인정보처리방침</h1>
             <p className="mt-1 text-xs text-slate-400">시행일: 2026-02-22 | 최종 개정일: 2026-02-22</p>
           </div>
-          <Link href="/login" className="text-sm text-slate-400 underline underline-offset-2 hover:text-slate-200">
-            로그인으로 돌아가기
-          </Link>
         </div>
 
         <section className="rounded-xl border border-white/10 bg-slate-950/80 p-4 text-sm leading-7 text-slate-300">
