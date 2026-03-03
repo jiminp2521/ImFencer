@@ -1,28 +1,92 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 
-type ChatComposerProps = {
-  chatId: string;
-  onSent?: () => void;
+export type SentChatMessage = {
+  id: string;
+  chat_id: string;
+  sender_id: string;
+  content: string;
+  created_at: string;
+  read_at: string | null;
 };
 
-export function ChatComposer({ chatId, onSent }: ChatComposerProps) {
+type SendMessageResponse =
+  | {
+      ok: true;
+      message: SentChatMessage;
+    }
+  | {
+      ok?: false;
+      error?: string;
+    };
+
+type ChatComposerProps = {
+  chatId: string;
+  onSent?: (message: SentChatMessage) => void;
+  onSend?: (content: string) => Promise<void>;
+  onTypingChange?: (isTyping: boolean) => void;
+};
+
+export function ChatComposer({ chatId, onSent, onSend, onTypingChange }: ChatComposerProps) {
   const router = useRouter();
   const [content, setContent] = useState('');
   const [pending, setPending] = useState(false);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const typingStateRef = useRef(false);
+
+  const emitTypingState = useCallback(
+    (nextTyping: boolean) => {
+      if (!onTypingChange) return;
+      if (typingStateRef.current === nextTyping) return;
+      typingStateRef.current = nextTyping;
+      onTypingChange(nextTyping);
+    },
+    [onTypingChange]
+  );
+
+  const scheduleTypingStop = useCallback(() => {
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    typingTimeoutRef.current = setTimeout(() => {
+      emitTypingState(false);
+    }, 1_400);
+  }, [emitTypingState]);
+
+  const clearTypingTimeout = useCallback(() => {
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      clearTypingTimeout();
+      emitTypingState(false);
+    };
+  }, [clearTypingTimeout, emitTypingState]);
 
   const sendMessage = async () => {
     const message = content.trim();
     if (!message || pending) return;
 
+    clearTypingTimeout();
+    emitTypingState(false);
     setPending(true);
 
     try {
+      if (onSend) {
+        await onSend(message);
+        setContent('');
+        return;
+      }
+
       const response = await fetch(`/api/chats/${chatId}/messages`, {
         method: 'POST',
         headers: {
@@ -38,18 +102,34 @@ export function ChatComposer({ chatId, onSent }: ChatComposerProps) {
       }
 
       if (!response.ok) {
-        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        const body = (await response.json().catch(() => null)) as SendMessageResponse | null;
         console.error('Send message failed:', body);
         alert('메시지 전송에 실패했습니다.');
         return;
       }
 
+      const body = (await response.json().catch(() => null)) as SendMessageResponse | null;
+      const sentMessage =
+        body && 'message' in body && body.message
+          ? body.message
+          : ({
+              id: `fallback-${Date.now()}`,
+              chat_id: chatId,
+              sender_id: '',
+              content: message,
+              created_at: new Date().toISOString(),
+              read_at: null,
+            } as SentChatMessage);
+
       setContent('');
       if (onSent) {
-        onSent();
+        onSent(sentMessage);
       } else {
         router.refresh();
       }
+    } catch (error) {
+      console.error('Send message failed by exception:', error);
+      alert('메시지 전송 중 오류가 발생했습니다.');
     } finally {
       setPending(false);
     }
@@ -60,7 +140,24 @@ export function ChatComposer({ chatId, onSent }: ChatComposerProps) {
       <div className="flex gap-2 items-end">
         <Textarea
           value={content}
-          onChange={(event) => setContent(event.target.value)}
+          onChange={(event) => {
+            const nextValue = event.target.value;
+            setContent(nextValue);
+
+            const hasText = nextValue.trim().length > 0;
+            if (!hasText) {
+              clearTypingTimeout();
+              emitTypingState(false);
+              return;
+            }
+
+            emitTypingState(true);
+            scheduleTypingStop();
+          }}
+          onBlur={() => {
+            clearTypingTimeout();
+            emitTypingState(false);
+          }}
           placeholder="메시지를 입력하세요"
           className="min-h-[56px] max-h-40 border-gray-800 bg-gray-950 text-gray-100 placeholder:text-gray-500"
           maxLength={1000}

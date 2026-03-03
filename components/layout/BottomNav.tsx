@@ -62,24 +62,6 @@ export function BottomNav() {
     const prefetchedRef = useRef(false);
     const hideNavPrefixes = ['/login', '/signup', '/write', '/auth', '/fencing/lessons/write', '/payments'];
     const shouldHideNav = hideNavPrefixes.some((prefix) => pathname.startsWith(prefix));
-    const resolveMyTabHref = async () => {
-        try {
-            const response = await fetch('/api/me', {
-                credentials: 'include',
-                cache: 'no-store',
-            });
-
-            if (response.ok) {
-                router.push('/profile');
-                return;
-            }
-        } catch {
-            // Fall through to login
-        }
-
-        router.push('/login?next=%2Fprofile');
-    };
-
     const warmTabData = (href: string) => {
         const tab = tabs.find((item) => item.href === href);
         if (!tab) return;
@@ -101,7 +83,12 @@ export function BottomNav() {
             prefetchedRef.current = true;
         };
 
-        const timeoutId = setTimeout(prefetchTabs, 300);
+        if ('requestIdleCallback' in window) {
+            const idleId = window.requestIdleCallback(prefetchTabs, { timeout: 1_000 });
+            return () => window.cancelIdleCallback(idleId);
+        }
+
+        const timeoutId = setTimeout(prefetchTabs, 80);
         return () => clearTimeout(timeoutId);
     }, [router, shouldHideNav]);
 
@@ -123,12 +110,15 @@ export function BottomNav() {
                         <Link
                             key={tab.name}
                             href={tab.href}
-                            onClick={(event) => {
-                                if (tab.href !== '/profile') return;
-                                event.preventDefault();
-                                void resolveMyTabHref();
+                            onClick={() => {
+                                router.prefetch(tab.href);
+                                warmTabData(tab.href);
                             }}
                             onMouseEnter={() => {
+                                router.prefetch(tab.href);
+                                warmTabData(tab.href);
+                            }}
+                            onFocus={() => {
                                 router.prefetch(tab.href);
                                 warmTabData(tab.href);
                             }}

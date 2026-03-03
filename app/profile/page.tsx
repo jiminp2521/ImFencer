@@ -1,21 +1,20 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase-server';
 import { ProfileScreen } from '@/components/profile/ProfileScreen';
+import { getAuthenticatedUserId } from '@/lib/auth-user';
 
 export default async function MyProfilePage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const userId = await getAuthenticatedUserId(supabase);
 
-  if (!user) {
+  if (!userId) {
     redirect('/login?next=%2Fprofile');
   }
 
   return (
     <ProfileScreen
-      profileUserId={user.id}
-      viewerUserId={user.id}
+      profileUserId={userId}
+      viewerUserId={userId}
       showOwnerMenu
       backHref={null}
       headerVariant="app"

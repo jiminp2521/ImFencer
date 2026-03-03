@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Grid3X3 } from 'lucide-react';
+import { Suspense } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -46,6 +47,12 @@ type ProfileScreenProps = {
   headerVariant?: 'default' | 'app';
 };
 
+type ProfileActivitySectionProps = {
+  profileUserId: string;
+  displayName: string;
+  isOwner: boolean;
+};
+
 const toSafeAvatarSrc = (value: string | null) => {
   if (!value) return null;
   const trimmed = value.trim();
@@ -53,30 +60,25 @@ const toSafeAvatarSrc = (value: string | null) => {
   return trimmed.startsWith('https://') ? trimmed : null;
 };
 
-export async function ProfileScreen({
+const formatCount = (value: number) => value.toLocaleString('ko-KR');
+
+function ProfileMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="py-3 text-center">
+      <p className="text-base font-semibold text-white">{formatCount(value)}</p>
+      <p className="text-[11px] text-slate-500">{label}</p>
+    </div>
+  );
+}
+
+async function ProfileActivitySection({
   profileUserId,
-  viewerUserId,
-  showOwnerMenu = false,
-  backHref = null,
-  headerVariant = 'default',
-}: ProfileScreenProps) {
+  displayName,
+  isOwner,
+}: ProfileActivitySectionProps) {
   const supabase = await createClient();
-  const isOwner = Boolean(viewerUserId && viewerUserId === profileUserId);
 
-  if (isOwner) {
-    try {
-      await ensureProfileRow(supabase, profileUserId);
-    } catch (error) {
-      console.error('Error ensuring profile row:', error);
-    }
-  }
-
-  const [profileResult, postsCountResult, likeCountResult, awardsCountResult, postsResult] = await Promise.all([
-    supabase
-      .from('profiles')
-      .select('username, weapon_type, tier, avatar_url, user_type, club_id')
-      .eq('id', profileUserId)
-      .maybeSingle(),
+  const [postsCountResult, likeCountResult, awardsCountResult, postsResult] = await Promise.all([
     supabase
       .from('posts')
       .select('id', { count: 'exact', head: true })
@@ -97,9 +99,6 @@ export async function ProfileScreen({
       .limit(12),
   ]);
 
-  if (profileResult.error) {
-    console.error('Error fetching profile:', profileResult.error);
-  }
   if (postsCountResult.error) {
     console.error('Error fetching posts count:', postsCountResult.error);
   }
@@ -111,6 +110,143 @@ export async function ProfileScreen({
   }
   if (postsResult.error) {
     console.error('Error fetching profile posts:', postsResult.error);
+  }
+
+  const postCount = postsCountResult.count || 0;
+  const receivedLikeCount = likeCountResult.count || 0;
+  const awardCount = awardsCountResult.count || 0;
+  const posts = (postsResult.data || []) as PostRow[];
+
+  return (
+    <div className="space-y-4">
+      <section className="overflow-hidden rounded-2xl border border-white/10 bg-black/35">
+        <div className="grid grid-cols-3 divide-x divide-white/10">
+          <ProfileMetric label="게시글" value={postCount} />
+          <ProfileMetric label="받은 좋아요" value={receivedLikeCount} />
+          <ProfileMetric label="수상" value={awardCount} />
+        </div>
+      </section>
+
+      {isOwner ? (
+        <section className="grid grid-cols-3 gap-2">
+          <Link
+            href="/activity"
+            className="inline-flex h-10 items-center justify-center rounded-lg border border-white/12 bg-white/[0.03] text-sm font-medium text-slate-200 hover:bg-white/[0.08]"
+          >
+            활동 관리
+          </Link>
+          <Link
+            href="/profile/posts"
+            className="inline-flex h-10 items-center justify-center rounded-lg border border-white/12 bg-white/[0.03] text-sm font-medium text-slate-200 hover:bg-white/[0.08]"
+          >
+            내가 쓴 글
+          </Link>
+          <Link
+            href="/profile/bookmarks"
+            className="inline-flex h-10 items-center justify-center rounded-lg border border-white/12 bg-white/[0.03] text-sm font-medium text-slate-200 hover:bg-white/[0.08]"
+          >
+            저장한 글
+          </Link>
+        </section>
+      ) : null}
+
+      <section className="space-y-3">
+        <div className="flex items-center justify-between border-b border-white/10 pb-2">
+          <div className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-100">
+            <Grid3X3 className="h-4 w-4" />
+            게시물
+          </div>
+          <span className="text-[11px] text-slate-500">{posts.length}개 표시</span>
+        </div>
+
+        {posts.length > 0 ? (
+          <div className="space-y-2">
+            {posts.map((post) => (
+              <Link
+                key={post.id}
+                href={`/posts/${post.id}`}
+                className="imf-panel block px-3 py-2.5 transition-colors hover:border-white/30"
+              >
+                <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                  <span>{categoryMap[post.category] || post.category}</span>
+                  <span>•</span>
+                  <span>
+                    {new Date(post.created_at).toLocaleDateString('ko-KR', {
+                      month: 'short',
+                      day: 'numeric',
+                    })}
+                  </span>
+                </div>
+                <p className="mt-1 line-clamp-1 text-sm font-medium text-slate-100">{post.title}</p>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <Card className="border-white/10 bg-black/30 p-6 text-center text-sm text-slate-500">
+            {displayName}님이 작성한 게시글이 없습니다.
+          </Card>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function ProfileActivitySectionFallback() {
+  return (
+    <div className="space-y-4 animate-pulse">
+      <section className="overflow-hidden rounded-2xl border border-white/10 bg-black/35">
+        <div className="grid grid-cols-3 divide-x divide-white/10">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <div key={`profile-metric-skeleton-${index}`} className="py-3 text-center">
+              <div className="mx-auto h-5 w-10 rounded bg-slate-800" />
+              <div className="mx-auto mt-2 h-3 w-14 rounded bg-slate-900" />
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <div className="h-4 w-20 rounded bg-slate-800" />
+        <div className="space-y-2">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={`profile-post-skeleton-${index}`} className="rounded-xl border border-white/10 bg-black/30 p-3">
+              <div className="h-3 w-24 rounded bg-slate-800" />
+              <div className="mt-2 h-4 w-full rounded bg-slate-900" />
+              <div className="mt-1 h-4 w-10/12 rounded bg-slate-900" />
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+export async function ProfileScreen({
+  profileUserId,
+  viewerUserId,
+  showOwnerMenu = false,
+  backHref = null,
+  headerVariant = 'default',
+}: ProfileScreenProps) {
+  const supabase = await createClient();
+  const isOwner = Boolean(viewerUserId && viewerUserId === profileUserId);
+
+  if (isOwner) {
+    try {
+      await ensureProfileRow(supabase, profileUserId);
+    } catch (error) {
+      console.error('Error ensuring profile row:', error);
+    }
+  }
+
+  const profileResult = await supabase
+    .from('profiles')
+    .select('username, weapon_type, tier, avatar_url, user_type, club_id')
+    .eq('id', profileUserId)
+    .maybeSingle();
+
+  if (profileResult.error) {
+    console.error('Error fetching profile:', profileResult.error);
   }
 
   let profile = profileResult.data as ProfileRow | null;
@@ -135,6 +271,7 @@ export async function ProfileScreen({
       };
     }
   }
+
   if (!profile && isOwner) {
     profile = {
       username: null,
@@ -153,8 +290,12 @@ export async function ProfileScreen({
   const displayName = profile.username || 'Fencer';
   const tierLabel = profile.tier || 'Bronze';
   const weaponLabel = profile.weapon_type ? weaponMap[profile.weapon_type] || profile.weapon_type : null;
-  let clubName: string | null = null;
+  const avatarSrc = toSafeAvatarSrc(profile.avatar_url);
+  const profileHandle = profile.username
+    ? profile.username.replace(/\s+/g, '').toLowerCase()
+    : `fencer-${profileUserId.slice(0, 6)}`;
 
+  let clubName: string | null = null;
   if (profile.club_id) {
     const { data: clubData, error: clubError } = await supabase
       .from('fencing_clubs')
@@ -162,7 +303,6 @@ export async function ProfileScreen({
       .eq('id', profile.club_id)
       .maybeSingle();
 
-    // Ignore invalid UUID when legacy text `club_id` data is present.
     if (clubError && clubError.code !== '22P02') {
       console.error('Error fetching profile club:', clubError);
     } else {
@@ -171,22 +311,7 @@ export async function ProfileScreen({
   }
 
   const bioParts = [weaponLabel, profile.user_type || null, clubName].filter(Boolean);
-  const bio = bioParts.length > 0 ? bioParts.join(' • ') : '프로필 정보가 없습니다.';
-
-  const postCount = postsCountResult.count || 0;
-  const receivedLikeCount = likeCountResult.count || 0;
-  const awardCount = awardsCountResult.count || 0;
-  const posts = (postsResult.data || []) as PostRow[];
-  const avatarSrc = toSafeAvatarSrc(profile.avatar_url);
-  const careerScore = postCount * 4 + receivedLikeCount + awardCount * 12;
-  const showcaseTitle =
-    careerScore >= 160 ? 'National Challenger' : careerScore >= 70 ? 'Club Ace' : careerScore >= 30 ? 'Rising Duelist' : 'Rookie Blade';
-  const showcaseSummary = `게시글 ${postCount}개 · 받은 좋아요 ${receivedLikeCount}개 · 수상 ${awardCount}회`;
-  const highlightItems = [
-    { label: '커뮤니티 영향력', value: `${receivedLikeCount.toLocaleString()} Likes` },
-    { label: '콘텐츠 생산량', value: `${postCount.toLocaleString()} Posts` },
-    { label: '공식 실적', value: `${awardCount.toLocaleString()} Awards` },
-  ];
+  const bio = bioParts.length > 0 ? bioParts.join(' • ') : '펜싱 커뮤니티에서 활동 중입니다.';
 
   return (
     <div className="imf-page">
@@ -207,7 +332,7 @@ export async function ProfileScreen({
           </div>
         </header>
       ) : (
-        <header className="sticky top-0 z-40 bg-black/80 backdrop-blur-md border-b border-white/10 px-4 h-14 flex items-center justify-between">
+        <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-white/10 bg-black/85 px-4 backdrop-blur-xl">
           <div className="flex items-center min-w-0 gap-2">
             {backHref ? (
               <Link href={backHref} className="text-gray-400 hover:text-white transition-colors">
@@ -216,132 +341,71 @@ export async function ProfileScreen({
             ) : (
               <div className="w-6" />
             )}
-            <h1 className="text-base font-semibold text-white truncate">{displayName}</h1>
+            <h1 className="truncate text-base font-semibold text-white">{displayName}</h1>
           </div>
-
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="border-gray-700 bg-transparent text-gray-300">
-              {tierLabel} Tier
-            </Badge>
-            {isOwner && showOwnerMenu ? <ProfileMenuButton userId={profileUserId} username={displayName} /> : null}
-          </div>
+          <Badge variant="outline" className="border-white/20 bg-white/5 text-slate-200">
+            {tierLabel}
+          </Badge>
         </header>
       )}
 
-      <main className="p-4 space-y-4">
-        <section className="imf-panel flex items-center gap-4 border-white/20 bg-[linear-gradient(135deg,rgba(12,12,12,0.98),rgba(7,7,7,0.94))]">
-          <Avatar className="h-20 w-20 rounded-2xl border-2 border-white/20 bg-black/60">
-            <AvatarImage src={avatarSrc ?? undefined} />
-            <AvatarFallback className="rounded-2xl">{displayName.slice(0, 2).toUpperCase()}</AvatarFallback>
-          </Avatar>
+      <main className="px-4 py-4 space-y-5">
+        <section className="space-y-4 border-b border-white/10 pb-4">
+          <div className="flex items-start gap-4">
+            <Avatar className="h-24 w-24 shrink-0 border-2 border-white/20 bg-black/50">
+              <AvatarImage src={avatarSrc ?? undefined} />
+              <AvatarFallback>{displayName.slice(0, 2).toUpperCase()}</AvatarFallback>
+            </Avatar>
 
-          <div className="flex-1 space-y-2 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-xl font-bold text-white truncate">{displayName}</h2>
-              {profile.user_type ? (
-                <Badge className="border-white/10 bg-gray-900 text-gray-300">{profile.user_type}</Badge>
-              ) : null}
-              {weaponLabel ? (
-                <Badge className="border-white/10 bg-gray-900 text-gray-300">{weaponLabel}</Badge>
-              ) : null}
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="flex items-center gap-2">
+                <h2 className="truncate text-lg font-semibold text-white">{displayName}</h2>
+                {weaponLabel ? (
+                  <Badge className="border-white/10 bg-white/10 text-slate-200">{weaponLabel}</Badge>
+                ) : null}
+              </div>
+              <p className="text-xs text-slate-500">@{profileHandle}</p>
+              <p className="text-sm text-slate-300">{bio}</p>
             </div>
-            <p className="text-sm text-slate-400">{bio}</p>
-            {isOwner ? (
-              <div className="flex flex-wrap gap-2 pt-1">
-                <Link href="/market" className="imf-pill border-white/20 bg-black/40 text-slate-200">
-                  아이템 마켓
-                </Link>
-              </div>
-            ) : null}
-            {!isOwner ? (
-              <div className="pt-1">
-                <StartChatButton
-                  targetUserId={profileUserId}
-                  contextTitle="프로필 문의"
-                  openingMessage={`${displayName}님께 문의드립니다.`}
-                  loginNext={`/users/${profileUserId}`}
-                  label="채팅하기"
-                  size="sm"
-                  variant="outline"
-                  className="border-slate-600 bg-slate-900 text-slate-200 hover:bg-slate-800"
-                />
-              </div>
-            ) : null}
           </div>
-        </section>
 
-        <section className="grid grid-cols-3 gap-3">
-          <Card className="imf-panel p-3 text-center">
-            <div className="text-xl font-bold text-white">{postCount}</div>
-            <div className="text-xs text-slate-400">게시글</div>
-          </Card>
-          <Card className="imf-panel p-3 text-center">
-            <div className="text-xl font-bold text-white">{receivedLikeCount}</div>
-            <div className="text-xs text-slate-400">받은 좋아요</div>
-          </Card>
-          <Card className="imf-panel p-3 text-center">
-            <div className="text-xl font-bold text-white">{awardCount}</div>
-            <div className="text-xs text-slate-400">수상 인증</div>
-          </Card>
-        </section>
-
-        <section
-          id="career-showcase"
-          className="imf-panel space-y-3 border-white/20 bg-[linear-gradient(128deg,rgba(19,19,19,0.96),rgba(8,8,8,0.98))]"
-        >
-          <div className="flex items-center justify-between gap-2">
-            <h3 className="text-lg font-semibold text-white">Career Showcase</h3>
-            <Badge className="border-white/20 bg-white/10 text-slate-100">{showcaseTitle}</Badge>
-          </div>
-          <p className="text-xs text-slate-300">{showcaseSummary}</p>
-          <div className="grid grid-cols-3 gap-2">
-            {highlightItems.map((item) => (
-              <div key={item.label} className="rounded-xl border border-white/10 bg-black/40 p-2.5 text-center">
-                <p className="text-[10px] text-slate-400">{item.label}</p>
-                <p className="mt-1 text-sm font-semibold text-slate-100">{item.value}</p>
-              </div>
-            ))}
-          </div>
-          <p className="text-xs text-slate-400">
-            {isOwner
-              ? '프로필 메뉴에서 내 활동과 콘텐츠를 관리할 수 있습니다.'
-              : `${displayName}님의 경기/커뮤니티 활동이 쇼케이스로 정리되어 있습니다.`}
-          </p>
-        </section>
-
-        <section className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-white">게시물</h3>
-            <span className="text-xs text-slate-400">{posts.length}개 표시</span>
-          </div>
-          {posts.length > 0 ? (
-            <div className="space-y-2">
-              {posts.map((post) => (
-                <Link
-                  key={post.id}
-                  href={`/posts/${post.id}`}
-                  className="imf-panel block px-3 py-2.5 transition-colors hover:border-white/35"
-                >
-                  <div className="flex items-center gap-2 text-[11px] text-slate-500">
-                    <span>{categoryMap[post.category] || post.category}</span>
-                    <span>•</span>
-                    <span>
-                      {new Date(post.created_at).toLocaleDateString('ko-KR', {
-                        month: 'short',
-                        day: 'numeric',
-                      })}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-sm font-medium text-slate-100 line-clamp-1">{post.title}</p>
-                </Link>
-              ))}
+          {isOwner ? (
+            <div className="grid grid-cols-2 gap-2">
+              <Link
+                href="/market"
+                className="inline-flex h-10 items-center justify-center rounded-lg border border-white/12 bg-white/[0.03] text-sm font-medium text-slate-200 hover:bg-white/[0.08]"
+              >
+                아이템 마켓
+              </Link>
+              <Link
+                href="/activity"
+                className="inline-flex h-10 items-center justify-center rounded-lg border border-white/12 bg-white/[0.03] text-sm font-medium text-slate-200 hover:bg-white/[0.08]"
+              >
+                신청/예약 관리
+              </Link>
             </div>
           ) : (
-            <Card className="imf-panel p-4 text-center text-sm text-slate-400">
-              아직 작성한 게시글이 없습니다.
-            </Card>
+            <StartChatButton
+              targetUserId={profileUserId}
+              contextTitle="프로필 문의"
+              openingMessage={`${displayName}님께 문의드립니다.`}
+              loginNext={`/users/${profileUserId}`}
+              label="메시지 보내기"
+              size="default"
+              variant="outline"
+              className="h-10 w-full border-white/20 bg-white/[0.03] text-slate-100 hover:bg-white/[0.08]"
+            />
           )}
         </section>
+
+        <Suspense fallback={<ProfileActivitySectionFallback />}>
+          <ProfileActivitySection
+            profileUserId={profileUserId}
+            displayName={displayName}
+            isOwner={isOwner}
+          />
+        </Suspense>
+
       </main>
     </div>
   );
