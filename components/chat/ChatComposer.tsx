@@ -13,6 +13,7 @@ export type SentChatMessage = {
   content: string;
   created_at: string;
   read_at: string | null;
+  client_id?: string | null;
 };
 
 type SendMessageResponse =
@@ -136,7 +137,7 @@ export function ChatComposer({ chatId, onSent, onSend, onTypingChange }: ChatCom
   };
 
   return (
-    <div className="border-t border-white/10 bg-black/80 backdrop-blur px-3 py-3">
+    <div className="border-t border-white/10 bg-black/65 px-3 py-3 backdrop-blur-xl">
       <div className="flex gap-2 items-end">
         <Textarea
           value={content}
@@ -158,15 +159,21 @@ export function ChatComposer({ chatId, onSent, onSend, onTypingChange }: ChatCom
             clearTypingTimeout();
             emitTypingState(false);
           }}
+          onKeyDown={(event) => {
+            if (event.key !== 'Enter' || event.shiftKey) return;
+            if (event.nativeEvent.isComposing) return;
+            event.preventDefault();
+            void sendMessage();
+          }}
           placeholder="메시지를 입력하세요"
-          className="min-h-[56px] max-h-40 border-gray-800 bg-gray-950 text-gray-100 placeholder:text-gray-500"
+          className="min-h-[56px] max-h-40 rounded-2xl border-white/15 bg-white/[0.04] text-slate-100 placeholder:text-slate-500"
           maxLength={1000}
         />
         <Button
           type="button"
           onClick={sendMessage}
           disabled={pending || !content.trim()}
-          className="h-[56px] w-[52px] bg-blue-600 hover:bg-blue-700 text-white"
+          className="h-[56px] w-[52px] rounded-2xl bg-amber-300 text-black hover:bg-amber-200"
         >
           {pending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
         </Button>

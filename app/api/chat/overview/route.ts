@@ -25,8 +25,6 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const rawPreferredChatId = searchParams.get('chat');
     const preferredChatId = isUuid(rawPreferredChatId) ? rawPreferredChatId : null;
-    const shouldOpenChat = searchParams.get('open') === '1';
-    const isPrefetch = request.headers.get('x-imfencer-prefetch') === '1';
 
     const supabase = await createClient();
 
@@ -55,16 +53,7 @@ export async function GET(request: NextRequest) {
       ? preferredChatId
       : chatIds[0] || null;
 
-    const markReadPromise = selectedChatId && shouldOpenChat && !isPrefetch
-      ? supabase
-          .from('messages')
-          .update({ read_at: new Date().toISOString() })
-          .eq('chat_id', selectedChatId)
-          .neq('sender_id', user.id)
-          .is('read_at', null)
-      : Promise.resolve({ error: null });
-
-    const [chatsResult, partnerResult, messagesResult, markReadResult] = await Promise.all([
+    const [chatsResult, partnerResult, messagesResult] = await Promise.all([
       chatIds.length > 0
         ? supabase
             .from('chats')
@@ -93,18 +82,14 @@ export async function GET(request: NextRequest) {
               content,
               created_at,
               read_at,
+              client_id,
               profiles:sender_id (username)
             `)
             .eq('chat_id', selectedChatId)
             .order('created_at', { ascending: false })
             .limit(CHAT_MESSAGES_LIMIT)
         : Promise.resolve({ data: [], error: null }),
-      markReadPromise,
     ]);
-
-    if (markReadResult.error) {
-      console.error('Error updating message read state:', markReadResult.error);
-    }
 
     if (chatsResult.error) {
       console.error('Error fetching chats:', chatsResult.error);

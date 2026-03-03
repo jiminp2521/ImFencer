@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase-server';
-import { ensureProfileRow } from '@/lib/ensure-profile';
 import { createNotificationAndPush } from '@/lib/notifications';
 import { isUuid } from '@/lib/security-validation';
 
@@ -12,6 +11,7 @@ type RouteContext = {
 
 type CreateMessageBody = {
   content?: string;
+  clientId?: string;
 };
 
 type InsertedMessageRow = {
@@ -21,6 +21,7 @@ type InsertedMessageRow = {
   content: string;
   created_at: string;
   read_at: string | null;
+  client_id: string | null;
 };
 
 export async function POST(request: Request, { params }: RouteContext) {
@@ -41,6 +42,8 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   const body = (await request.json().catch(() => null)) as CreateMessageBody | null;
   const content = (body?.content || '').trim();
+  const clientIdRaw = (body?.clientId || '').trim();
+  const clientId = clientIdRaw && /^[a-zA-Z0-9._:-]{8,120}$/.test(clientIdRaw) ? clientIdRaw : '';
 
   if (!content) {
     return NextResponse.json({ error: 'Content is required' }, { status: 400 });
@@ -50,22 +53,32 @@ export async function POST(request: Request, { params }: RouteContext) {
   }
 
   try {
-    await ensureProfileRow(supabase, user.id);
+    if (clientId) {
+      const existingResult = await supabase
+        .from('messages')
+        .select('id, chat_id, sender_id, content, created_at, read_at, client_id')
+        .eq('chat_id', chatId)
+        .eq('sender_id', user.id)
+        .eq('client_id', clientId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-    const { data: membership, error: membershipError } = await supabase
-      .from('chat_participants')
-      .select('chat_id')
-      .eq('chat_id', chatId)
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    if (membershipError) {
-      console.error('Failed to verify chat membership:', membershipError);
-      return NextResponse.json({ error: 'Failed to send message' }, { status: 500 });
-    }
-
-    if (!membership) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      if (!existingResult.error && existingResult.data) {
+        const existing = existingResult.data as InsertedMessageRow;
+        return NextResponse.json({
+          ok: true,
+          message: {
+            id: existing.id,
+            chat_id: existing.chat_id,
+            sender_id: existing.sender_id,
+            content: existing.content,
+            created_at: existing.created_at,
+            read_at: existing.read_at,
+            client_id: existing.client_id,
+          },
+        });
+      }
     }
 
     const { data: inserted, error: insertError } = await supabase
@@ -74,25 +87,20 @@ export async function POST(request: Request, { params }: RouteContext) {
         chat_id: chatId,
         sender_id: user.id,
         content,
+        client_id: clientId || null,
       })
-      .select('id, chat_id, sender_id, content, created_at, read_at')
+      .select('id, chat_id, sender_id, content, created_at, read_at, client_id')
       .single();
 
     if (insertError || !inserted) {
+      if (insertError?.code === '42501') {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
       console.error('Error inserting message:', insertError);
       return NextResponse.json({ error: 'Failed to send message' }, { status: 500 });
     }
 
     const insertedMessage = inserted as InsertedMessageRow;
-
-    const { error: chatUpdateError } = await supabase
-      .from('chats')
-      .update({ last_message: content, updated_at: new Date().toISOString() })
-      .eq('id', chatId);
-
-    if (chatUpdateError) {
-      console.error('Error updating chat preview:', chatUpdateError);
-    }
 
     void (async () => {
       const participantsResult = await supabase
@@ -134,6 +142,7 @@ export async function POST(request: Request, { params }: RouteContext) {
         content: insertedMessage.content,
         created_at: insertedMessage.created_at,
         read_at: insertedMessage.read_at,
+        client_id: insertedMessage.client_id,
       },
     });
   } catch (error) {

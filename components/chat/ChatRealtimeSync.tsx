@@ -11,6 +11,7 @@ export type ChatRealtimeMessageRow = {
   content?: string;
   created_at?: string;
   read_at?: string | null;
+  client_id?: string | null;
 };
 
 export type ChatRealtimeChatRow = {
@@ -75,7 +76,7 @@ export function ChatRealtimeSync({ chatIds, userId, onEvent, onSyncRequired }: C
     }
 
     const chatIdSet = new Set(chatIds);
-    const scheduleSync = (delay = 1_700) => {
+    const scheduleSync = (delay = 420) => {
       if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
         return;
       }
@@ -100,7 +101,7 @@ export function ChatRealtimeSync({ chatIds, userId, onEvent, onSyncRequired }: C
         if (!row.chat_id) return;
 
         if (!chatIdSet.has(row.chat_id)) {
-          scheduleSync(280);
+          scheduleSync(140);
         }
 
         onEventRef.current?.({
@@ -124,7 +125,7 @@ export function ChatRealtimeSync({ chatIds, userId, onEvent, onSyncRequired }: C
         if (!row.id) return;
 
         if (!chatIdSet.has(row.id)) {
-          scheduleSync(280);
+          scheduleSync(140);
         }
 
         onEventRef.current?.({
@@ -146,12 +147,12 @@ export function ChatRealtimeSync({ chatIds, userId, onEvent, onSyncRequired }: C
             type: 'membership_insert',
             row,
           });
-          scheduleSync(220);
+          scheduleSync(120);
         }
       )
       .subscribe((status) => {
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          scheduleSync(300);
+          scheduleSync(160);
         }
       })
     ;

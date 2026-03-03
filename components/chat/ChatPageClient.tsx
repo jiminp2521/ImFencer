@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { Loader2, Search } from 'lucide-react';
+import { ArrowLeft, Check, Loader2, Search } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ChatComposer, type SentChatMessage } from '@/components/chat/ChatComposer';
@@ -30,7 +30,7 @@ type ChatMessage = {
   created_at: string;
   read_at: string | null;
   profiles: MessageProfile | MessageProfile[] | null;
-  client_id?: string;
+  client_id?: string | null;
   delivery_status?: 'sending' | 'failed';
   error_message?: string | null;
 };
@@ -70,6 +70,37 @@ const toEpoch = (value: string) => {
 
 const sortChatsByUpdatedAt = (items: ChatEntry[]) => {
   return [...items].sort((left, right) => toEpoch(right.updated_at) - toEpoch(left.updated_at));
+};
+
+const formatChatListTime = (value: string) => {
+  const epoch = toEpoch(value);
+  if (epoch === 0) return '';
+
+  const time = new Date(epoch);
+  const now = new Date();
+  if (now.toDateString() === time.toDateString()) {
+    return time.toLocaleTimeString('ko-KR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }
+
+  return time.toLocaleDateString('ko-KR', {
+    month: 'numeric',
+    day: 'numeric',
+  });
+};
+
+const formatMessageTime = (value: string) => {
+  return new Date(value).toLocaleTimeString('ko-KR', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+
+const getAvatarInitial = (name: string) => {
+  if (!name) return '채';
+  return name.trim().slice(0, 1).toUpperCase();
 };
 
 const upsertMessage = (messages: ChatMessage[], incoming: ChatMessage) => {
@@ -135,6 +166,7 @@ export function ChatPageClient() {
   const requestedChatId = searchParams.get('chat');
   const chatSearchQuery = (searchParams.get('q') || '').trim();
   const [isSearchOpen, setIsSearchOpen] = useState(Boolean(chatSearchQuery));
+  const [chatListFilter, setChatListFilter] = useState<'all' | 'unread'>('all');
   const [hasLiveSnapshot, setHasLiveSnapshot] = useState(false);
   const [liveUserId, setLiveUserId] = useState('');
   const [liveChatIds, setLiveChatIds] = useState<string[]>([]);
@@ -150,12 +182,12 @@ export function ChatPageClient() {
   const [isPartnerTyping, setIsPartnerTyping] = useState(false);
 
   const overviewUrl = useMemo(() => {
-    if (!requestedChatId) return '/api/chat/overview?open=1';
-    return `/api/chat/overview?chat=${encodeURIComponent(requestedChatId)}&open=1`;
+    if (!requestedChatId) return '/api/chat/overview';
+    return `/api/chat/overview?chat=${encodeURIComponent(requestedChatId)}`;
   }, [requestedChatId]);
 
   const { data, error, isLoading, isValidating, mutate } = useSWRLite(overviewUrl, fetchChatOverview, {
-    staleTime: 8_000,
+    staleTime: 2_500,
     keepPreviousData: true,
   });
 
@@ -200,6 +232,11 @@ export function ChatPageClient() {
   const signalClientRef = useRef<ReturnType<typeof createClient> | null>(null);
   const localTypingStateRef = useRef(false);
   const partnerTypingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const messageViewportRef = useRef<HTMLDivElement | null>(null);
+  const previousSelectedChatIdRef = useRef<string | null>(null);
+  const readSyncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const readAckEpochRef = useRef(0);
+  const messageByIdRef = useRef<Record<string, ChatMessage>>({});
 
   useEffect(() => {
     chatIdsRef.current = chatIds;
@@ -214,7 +251,7 @@ export function ChatPageClient() {
   }, [userId]);
 
   const scheduleRevalidate = useCallback(
-    (delay = 1_200) => {
+    (delay = 320) => {
       if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
         return;
       }
@@ -238,8 +275,26 @@ export function ChatPageClient() {
       if (partnerTypingTimeoutRef.current) {
         clearTimeout(partnerTypingTimeoutRef.current);
       }
+      if (readSyncTimeoutRef.current) {
+        clearTimeout(readSyncTimeoutRef.current);
+      }
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        void mutate();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [mutate]);
 
   const upsertChatEntry = useCallback((input: { id: string; last_message?: string | null; updated_at?: string }) => {
     if (!input.id) return;
@@ -316,13 +371,13 @@ export function ChatPageClient() {
   );
 
   const sendMessageRequest = useCallback(
-    async (chatId: string, content: string): Promise<SentChatMessage> => {
+    async (chatId: string, content: string, clientId: string): Promise<SentChatMessage> => {
       const response = await fetch(`/api/chats/${chatId}/messages`, {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
         },
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ content, clientId }),
       });
 
       const body = (await response.json().catch(() => null)) as
@@ -352,6 +407,7 @@ export function ChatPageClient() {
         content,
         created_at: new Date().toISOString(),
         read_at: null,
+        client_id: clientId,
       };
     },
     [router]
@@ -366,6 +422,7 @@ export function ChatPageClient() {
         content: sentMessage.content,
         created_at: sentMessage.created_at,
         read_at: sentMessage.read_at,
+        client_id: sentMessage.client_id ?? null,
         profiles: null,
       };
 
@@ -379,7 +436,7 @@ export function ChatPageClient() {
         ...prev,
         [normalizedMessage.chat_id]: 0,
       }));
-      scheduleRevalidate(1_200);
+      scheduleRevalidate(220);
     },
     [scheduleRevalidate, upsertChatEntry, upsertSelectedChatMessage]
   );
@@ -417,7 +474,7 @@ export function ChatPageClient() {
       });
 
       try {
-        const sent = await sendMessageRequest(chatId, content);
+        const sent = await sendMessageRequest(chatId, content, clientId);
         removeDraftMessage(chatId, clientId);
         commitSentMessage(sent);
       } catch (error) {
@@ -461,7 +518,7 @@ export function ChatPageClient() {
       if (!retryContent) return;
 
       try {
-        const sent = await sendMessageRequest(chatId, retryContent);
+        const sent = await sendMessageRequest(chatId, retryContent, clientId);
         removeDraftMessage(chatId, clientId);
         commitSentMessage(sent);
       } catch (error) {
@@ -633,7 +690,7 @@ export function ChatPageClient() {
     (event: ChatRealtimeEvent) => {
       if (event.type === 'membership_insert') {
         if (!event.row.chat_id || !chatIdsRef.current.includes(event.row.chat_id)) {
-          scheduleRevalidate(180);
+          scheduleRevalidate(100);
         }
         return;
       }
@@ -650,7 +707,7 @@ export function ChatPageClient() {
 
       const row = event.row;
       if (!row.id || !row.chat_id) {
-        scheduleRevalidate(280);
+        scheduleRevalidate(160);
         return;
       }
       const chatId = row.chat_id;
@@ -660,12 +717,12 @@ export function ChatPageClient() {
       const isKnownChat = chatIdsRef.current.includes(chatId);
 
       if (!isKnownChat) {
-        scheduleRevalidate(180);
+        scheduleRevalidate(100);
       }
 
       if (event.type === 'message_insert') {
         if (!row.sender_id || !row.created_at || typeof row.content !== 'string') {
-          scheduleRevalidate(220);
+          scheduleRevalidate(140);
           return;
         }
 
@@ -676,6 +733,7 @@ export function ChatPageClient() {
           content: row.content,
           created_at: row.created_at,
           read_at: row.read_at ?? null,
+          client_id: row.client_id ?? null,
           profiles: null,
         };
 
@@ -684,12 +742,16 @@ export function ChatPageClient() {
           last_message: row.content,
           updated_at: row.created_at,
         });
+
+        if (row.sender_id === currentUserId && row.client_id) {
+          removeDraftMessage(chatId, row.client_id);
+        }
         upsertSelectedChatMessage(incomingMessage);
 
         if (row.sender_id !== currentUserId) {
           if (currentSelectedChatId === chatId) {
             setLiveUnreadCountMap((prev) => ({ ...prev, [chatId]: 0 }));
-            scheduleRevalidate(260);
+            scheduleRevalidate(140);
           } else {
             setLiveUnreadCountMap((prev) => ({
               ...prev,
@@ -726,8 +788,191 @@ export function ChatPageClient() {
         setLiveUnreadCountMap((prev) => ({ ...prev, [chatId]: 0 }));
       }
     },
-    [scheduleRevalidate, upsertChatEntry, upsertSelectedChatMessage]
+    [removeDraftMessage, scheduleRevalidate, upsertChatEntry, upsertSelectedChatMessage]
   );
+
+  const normalizedQuery = chatSearchQuery.toLowerCase();
+
+  const filteredChats = chats.filter((chat) => {
+    const matchesQuery = !chatSearchQuery || (() => {
+      const partner = (partnerMap[chat.id] || '').toLowerCase();
+      const preview = (chat.last_message || '').toLowerCase();
+      return partner.includes(normalizedQuery) || preview.includes(normalizedQuery);
+    })();
+    if (!matchesQuery) return false;
+
+    if (chatListFilter === 'unread') {
+      return (unreadCountMap[chat.id] || 0) > 0;
+    }
+
+    return true;
+  });
+
+  const selectedDraftMessages = selectedChatId
+    ? draftMessagesByChat[selectedChatId] || EMPTY_DRAFT_MESSAGES
+    : EMPTY_DRAFT_MESSAGES;
+  const mergedMessages = [...messages, ...selectedDraftMessages].sort(
+    (left, right) => toEpoch(left.created_at) - toEpoch(right.created_at)
+  );
+
+  const filteredMessages = chatSearchQuery
+    ? mergedMessages.filter((message) => {
+        const profile = Array.isArray(message.profiles) ? message.profiles[0] : message.profiles;
+        const senderName = (
+          message.sender_id === userId
+            ? '나'
+            : profile?.username || ''
+        ).toLowerCase();
+        return senderName.includes(normalizedQuery) || message.content.toLowerCase().includes(normalizedQuery);
+      })
+    : mergedMessages;
+
+  useEffect(() => {
+    const byId: Record<string, ChatMessage> = {};
+    for (const message of filteredMessages) {
+      byId[message.id] = message;
+    }
+    messageByIdRef.current = byId;
+  }, [filteredMessages]);
+
+  const markChatReadUpTo = useCallback(
+    async (chatId: string, messageId: string, createdAt: string) => {
+      const createdEpoch = toEpoch(createdAt);
+      if (!chatId || !messageId || createdEpoch === 0) return;
+      if (createdEpoch <= readAckEpochRef.current) return;
+
+      readAckEpochRef.current = createdEpoch;
+
+      try {
+        const response = await fetch(`/api/chats/${chatId}/read`, {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify({ messageId }),
+        });
+
+        if (response.status === 401) {
+          router.push(`/login?next=${encodeURIComponent(`/chat?chat=${chatId}`)}`);
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error(`read update failed (${response.status})`);
+        }
+
+        const body = (await response.json().catch(() => null)) as
+          | {
+              readAt?: string;
+            }
+          | null;
+
+        const readAt = body?.readAt || new Date().toISOString();
+        setLiveUnreadCountMap((prev) => ({ ...prev, [chatId]: 0 }));
+        setLiveMessages((prev) => prev.map((message) => {
+          if (message.chat_id !== chatId) return message;
+          if (message.sender_id === userIdRef.current) return message;
+          if (message.read_at) return message;
+          if (toEpoch(message.created_at) > createdEpoch) return message;
+          return {
+            ...message,
+            read_at: readAt,
+          };
+        }));
+      } catch (error) {
+        console.error('Failed to sync read receipt:', error);
+        readAckEpochRef.current = 0;
+      }
+    },
+    [router]
+  );
+
+  const selectedPartnerName = selectedChatId ? partnerMap[selectedChatId] || '채팅방' : '';
+  const isMobileDetailView = Boolean(selectedChatId);
+  const latestMessageKey = filteredMessages.length > 0
+    ? `${filteredMessages[filteredMessages.length - 1].id}:${filteredMessages[filteredMessages.length - 1].created_at}`
+    : 'empty';
+
+  useEffect(() => {
+    const viewport = messageViewportRef.current;
+    if (!viewport || !selectedChatId) {
+      previousSelectedChatIdRef.current = selectedChatId;
+      return;
+    }
+
+    const changedRoom = previousSelectedChatIdRef.current !== selectedChatId;
+    previousSelectedChatIdRef.current = selectedChatId;
+
+    const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
+    if (changedRoom || distanceFromBottom < 220) {
+      viewport.scrollTo({
+        top: viewport.scrollHeight,
+        behavior: changedRoom ? 'auto' : 'smooth',
+      });
+    }
+  }, [latestMessageKey, selectedChatId, isPartnerTyping]);
+
+  useEffect(() => {
+    if (readSyncTimeoutRef.current) {
+      clearTimeout(readSyncTimeoutRef.current);
+      readSyncTimeoutRef.current = null;
+    }
+
+    if (!selectedChatId) {
+      readAckEpochRef.current = 0;
+      return;
+    }
+
+    const latestReadIncoming = [...mergedMessages]
+      .reverse()
+      .find((message) => message.chat_id === selectedChatId && message.sender_id !== userId && Boolean(message.read_at));
+
+    readAckEpochRef.current = latestReadIncoming ? toEpoch(latestReadIncoming.created_at) : 0;
+  }, [mergedMessages, selectedChatId, userId]);
+
+  useEffect(() => {
+    const viewport = messageViewportRef.current;
+    if (!viewport || !selectedChatId) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+
+          const target = entry.target as HTMLElement;
+          const messageId = target.dataset.chatMessageId;
+          if (!messageId) continue;
+
+          const message = messageByIdRef.current[messageId];
+          if (!message) continue;
+          if (message.chat_id !== selectedChatIdRef.current) continue;
+          if (message.sender_id === userIdRef.current) continue;
+
+          const createdEpoch = toEpoch(message.created_at);
+          if (createdEpoch === 0 || createdEpoch <= readAckEpochRef.current) continue;
+
+          if (readSyncTimeoutRef.current) {
+            clearTimeout(readSyncTimeoutRef.current);
+          }
+
+          readSyncTimeoutRef.current = setTimeout(() => {
+            void markChatReadUpTo(message.chat_id, message.id, message.created_at);
+          }, 180);
+        }
+      },
+      {
+        root: viewport,
+        threshold: 0.75,
+      }
+    );
+
+    const targets = viewport.querySelectorAll<HTMLElement>('[data-chat-message-id]');
+    targets.forEach((node) => observer.observe(node));
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [filteredMessages, markChatReadUpTo, selectedChatId]);
 
   if (error) {
     return (
@@ -787,35 +1032,6 @@ export function ChatPageClient() {
     );
   }
 
-  const normalizedQuery = chatSearchQuery.toLowerCase();
-
-  const filteredChats = chatSearchQuery
-    ? chats.filter((chat) => {
-        const partner = (partnerMap[chat.id] || '').toLowerCase();
-        const preview = (chat.last_message || '').toLowerCase();
-        return partner.includes(normalizedQuery) || preview.includes(normalizedQuery);
-      })
-    : chats;
-
-  const selectedDraftMessages = selectedChatId
-    ? draftMessagesByChat[selectedChatId] || EMPTY_DRAFT_MESSAGES
-    : EMPTY_DRAFT_MESSAGES;
-  const mergedMessages = [...messages, ...selectedDraftMessages].sort(
-    (left, right) => toEpoch(left.created_at) - toEpoch(right.created_at)
-  );
-
-  const filteredMessages = chatSearchQuery
-    ? mergedMessages.filter((message) => {
-        const profile = Array.isArray(message.profiles) ? message.profiles[0] : message.profiles;
-        const senderName = (
-          message.sender_id === userId
-            ? '나'
-            : profile?.username || ''
-        ).toLowerCase();
-        return senderName.includes(normalizedQuery) || message.content.toLowerCase().includes(normalizedQuery);
-      })
-    : mergedMessages;
-
   return (
     <div className="imf-page">
       {userId ? (
@@ -832,184 +1048,263 @@ export function ChatPageClient() {
       <ChatHeader onToggleSearch={() => setIsSearchOpen((prev) => !prev)} />
 
       {isSearchOpen ? (
-        <form action="/chat" className="px-4 pt-2">
-          <div className="imf-panel flex items-center gap-2 p-2.5">
-            {requestedChatId ? <input type="hidden" name="chat" value={requestedChatId} /> : null}
-            <input
-              type="text"
-              name="q"
-              defaultValue={chatSearchQuery}
-              placeholder="상대 닉네임 또는 대화 내용 검색"
-              className="h-9 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-white/70"
-            />
-            <button
-              type="submit"
-              className="inline-flex h-9 items-center justify-center rounded-xl bg-white px-3 text-xs font-semibold text-black hover:bg-slate-200"
-            >
-              검색
-            </button>
-            {chatSearchQuery ? (
-              <Link
-                href={requestedChatId ? `/chat?chat=${requestedChatId}` : '/chat'}
-                className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-700 bg-slate-900 px-3 text-xs font-medium text-slate-300 hover:bg-slate-800"
+        <form action="/chat" className="px-3 pt-3 md:px-4">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-2.5 shadow-[0_10px_28px_rgba(0,0,0,0.25)] backdrop-blur-xl">
+            <div className="flex items-center gap-2">
+              {requestedChatId ? <input type="hidden" name="chat" value={requestedChatId} /> : null}
+              <input
+                type="text"
+                name="q"
+                defaultValue={chatSearchQuery}
+                placeholder="상대 닉네임 또는 대화 내용 검색"
+                className="h-10 w-full rounded-xl border border-white/15 bg-black/50 px-3 text-sm text-slate-100 placeholder:text-slate-500 outline-none transition-colors focus:border-white/45"
+              />
+              <button
+                type="submit"
+                className="inline-flex h-10 items-center justify-center rounded-xl bg-white px-3 text-xs font-semibold text-black transition-colors hover:bg-slate-200"
               >
-                초기화
-              </Link>
-            ) : null}
-            {isValidating ? <span className="text-[11px] text-slate-500 whitespace-nowrap">갱신중</span> : null}
+                검색
+              </button>
+              {chatSearchQuery ? (
+                <Link
+                  href={requestedChatId ? `/chat?chat=${requestedChatId}` : '/chat'}
+                  className="inline-flex h-10 items-center justify-center rounded-xl border border-white/15 bg-white/[0.04] px-3 text-xs font-medium text-slate-200 transition-colors hover:bg-white/[0.08]"
+                >
+                  초기화
+                </Link>
+              ) : null}
+              {isValidating ? <span className="text-[11px] text-slate-500 whitespace-nowrap">갱신중</span> : null}
+            </div>
           </div>
         </form>
       ) : null}
 
       {chats.length > 0 ? (
-        <main className="animate-imfencer-fade-up px-4 py-2 grid grid-cols-1 gap-2 md:grid-cols-[300px_1fr]">
-          <aside className="imf-panel overflow-hidden p-0">
-            {filteredChats.length > 0 ? filteredChats.map((chat) => {
-              const isActive = chat.id === selectedChatId;
-              return (
-                <Link
-                  key={chat.id}
-                  href={chatSearchQuery ? `/chat?chat=${chat.id}&q=${encodeURIComponent(chatSearchQuery)}` : `/chat?chat=${chat.id}`}
-                  prefetch={false}
-                  className={`block border-b border-white/10 px-4 py-3 transition-colors ${
-                    isActive ? 'bg-white/10' : 'hover:bg-white/5'
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-semibold text-white">{partnerMap[chat.id] || '채팅방'}</p>
-                    <div className="flex items-center gap-2">
-                      {unreadCountMap[chat.id] ? (
-                        <span className="inline-flex min-w-5 h-5 px-1.5 items-center justify-center rounded-full bg-white text-[10px] font-semibold text-black">
-                          {unreadCountMap[chat.id]}
-                        </span>
-                      ) : null}
-                      <span className="text-[11px] text-slate-500">
-                        {new Date(chat.updated_at).toLocaleDateString('ko-KR', {
-                          month: 'short',
-                          day: 'numeric',
-                        })}
-                      </span>
-                    </div>
-                  </div>
-                  <p className="mt-1 line-clamp-1 text-xs text-slate-400">{chat.last_message || '새 대화가 시작되었습니다.'}</p>
-                </Link>
-              );
-            }) : (
-              <div className="px-4 py-10 text-center text-sm text-slate-500">
-                검색 결과가 없습니다.
-              </div>
-            )}
-          </aside>
-
-          <section className="imf-panel min-h-[60vh] flex flex-col p-0 overflow-hidden">
-            {selectedChatId ? (
-              <>
-                <div className="border-b border-white/10 px-4 py-3">
-                  <p className="text-sm font-semibold text-white">
-                    {partnerMap[selectedChatId] || '채팅방'}
-                  </p>
-                  <p
-                    className={`mt-0.5 text-[11px] ${
-                      isPartnerTyping
-                        ? 'text-emerald-300'
-                        : partnerOnlineCount > 0
-                          ? 'text-emerald-400'
-                          : 'text-slate-500'
+        <main className="animate-imfencer-fade-up px-3 pb-4 pt-3 md:px-4">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[340px_1fr]">
+            <aside
+              className={`min-h-[64vh] overflow-hidden rounded-3xl border border-white/12 bg-black/55 shadow-[0_18px_42px_rgba(0,0,0,0.28)] backdrop-blur-xl ${
+                isMobileDetailView ? 'hidden md:flex' : 'flex'
+              } flex-col`}
+            >
+              <div className="border-b border-white/10 p-3">
+                <div className="mb-2 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setChatListFilter('all')}
+                    className={`inline-flex rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+                      chatListFilter === 'all'
+                        ? 'bg-white text-black'
+                        : 'border border-white/15 bg-white/[0.03] text-slate-200 hover:bg-white/[0.08]'
                     }`}
                   >
-                    {isPartnerTyping ? '입력 중...' : partnerOnlineCount > 0 ? '온라인' : '오프라인'}
-                  </p>
-                </div>
-                <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
-                  {reachedMessageLimit ? (
-                    <p className="text-center text-[11px] text-slate-500">
-                      최근 {chatMessagesLimit}개 메시지만 표시됩니다.
-                    </p>
+                    전체
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setChatListFilter('unread')}
+                    className={`inline-flex rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+                      chatListFilter === 'unread'
+                        ? 'bg-white text-black'
+                        : 'border border-white/15 bg-white/[0.03] text-slate-200 hover:bg-white/[0.08]'
+                    }`}
+                  >
+                    안 읽음
+                  </button>
+                  {isValidating ? (
+                    <span className="ml-auto inline-flex items-center gap-1 text-[11px] text-slate-500">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      동기화 중
+                    </span>
                   ) : null}
-                  {filteredMessages.length > 0 ? (
-                    filteredMessages.map((message) => {
-                      const profile = Array.isArray(message.profiles) ? message.profiles[0] : message.profiles;
-                      const mine = message.sender_id === userId;
-                      const isSending = message.delivery_status === 'sending';
-                      const isFailed = message.delivery_status === 'failed';
-
-                      return (
-                        <div
-                          key={message.client_id || message.id}
-                          className={`flex ${mine ? 'justify-end' : 'justify-start'}`}
-                        >
-                          <div
-                            className={`max-w-[82%] rounded-2xl px-3 py-2 ${
-                              mine
-                                ? isFailed
-                                  ? 'border border-red-500/60 bg-red-500/10 text-red-100'
-                                  : isSending
-                                    ? 'border border-white/20 bg-white/90 text-black'
-                                    : 'bg-white text-black'
-                                : 'border border-white/10 bg-slate-900 text-slate-100'
-                            }`}
-                          >
-                            <p className="mb-0.5 text-[11px] opacity-80">
-                              {mine ? '나' : profile?.username || '상대방'}
-                            </p>
-                            <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
-                            <p className="mt-1 text-[10px] opacity-70">
-                              {new Date(message.created_at).toLocaleTimeString('ko-KR', {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })}
-                              {mine
-                                ? isFailed
-                                  ? ' • 전송 실패'
-                                  : isSending
-                                    ? ' • 전송 중'
-                                    : message.read_at
-                                      ? ` • 읽음 ${new Date(message.read_at).toLocaleTimeString('ko-KR', {
-                                          hour: '2-digit',
-                                          minute: '2-digit',
-                                        })}`
-                                      : ' • 안읽음'
-                                : ''}
-                            </p>
-                            {mine && isSending ? (
-                              <p className="mt-1 inline-flex items-center gap-1 text-[10px] text-slate-500">
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                                전송 중
-                              </p>
-                            ) : null}
-                            {mine && isFailed && message.client_id ? (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  void retryFailedMessage(message.chat_id, message.client_id!);
-                                }}
-                                className="mt-1 inline-flex items-center rounded-lg border border-red-400/50 px-2 py-0.5 text-[10px] font-medium text-red-100 hover:bg-red-500/20"
-                              >
-                                재전송
-                              </button>
-                            ) : null}
-                          </div>
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <p className="py-10 text-center text-sm text-slate-500">
-                      {chatSearchQuery ? '검색된 메시지가 없습니다.' : '아직 메시지가 없습니다.'}
-                    </p>
-                  )}
                 </div>
-                <ChatComposer
-                  chatId={selectedChatId}
-                  onSend={handleComposerSend}
-                  onTypingChange={handleTypingChange}
-                />
-              </>
-            ) : (
-              <div className="flex-1 flex items-center justify-center text-sm text-slate-500">
-                채팅방을 선택해주세요.
+                <p className="text-[11px] text-slate-500">
+                  채팅 {chats.length}개
+                </p>
               </div>
-            )}
-          </section>
+
+              <div className="flex-1 overflow-y-auto">
+                {filteredChats.length > 0 ? filteredChats.map((chat) => {
+                  const isActive = chat.id === selectedChatId;
+                  const partnerName = partnerMap[chat.id] || '채팅방';
+                  const unreadCount = unreadCountMap[chat.id] || 0;
+                  const chatHref = chatSearchQuery
+                    ? `/chat?chat=${chat.id}&q=${encodeURIComponent(chatSearchQuery)}`
+                    : `/chat?chat=${chat.id}`;
+
+                  return (
+                    <Link
+                      key={chat.id}
+                      href={chatHref}
+                      prefetch={false}
+                      className={`block border-b border-white/8 px-3 py-3 transition-colors ${
+                        isActive ? 'bg-white/[0.09]' : 'hover:bg-white/[0.05]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-sm font-semibold ${
+                            isActive
+                              ? 'bg-gradient-to-br from-amber-300/80 to-orange-300/70 text-black'
+                              : 'bg-white/[0.08] text-slate-100'
+                          }`}
+                        >
+                          {getAvatarInitial(partnerName)}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="truncate text-sm font-semibold text-slate-100">{partnerName}</p>
+                            <span className="ml-auto text-[11px] text-slate-500">
+                              {formatChatListTime(chat.updated_at)}
+                            </span>
+                          </div>
+                          <p className="mt-0.5 line-clamp-1 text-xs text-slate-400">
+                            {chat.last_message || '새 대화가 시작되었습니다.'}
+                          </p>
+                        </div>
+                        {unreadCount > 0 ? (
+                          <span className="inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-amber-300 px-1.5 text-[10px] font-semibold text-black">
+                            {unreadCount > 99 ? '99+' : unreadCount}
+                          </span>
+                        ) : null}
+                      </div>
+                    </Link>
+                  );
+                }) : (
+                  <div className="px-4 py-12 text-center text-sm text-slate-500">
+                    {chatListFilter === 'unread' ? '안 읽은 채팅이 없습니다.' : '검색 결과가 없습니다.'}
+                  </div>
+                )}
+              </div>
+            </aside>
+
+            <section
+              className={`min-h-[64vh] overflow-hidden rounded-3xl border border-white/12 bg-black/58 shadow-[0_18px_42px_rgba(0,0,0,0.28)] backdrop-blur-xl ${
+                isMobileDetailView ? 'flex' : 'hidden md:flex'
+              } flex-col`}
+            >
+              {selectedChatId ? (
+                <>
+                  <div className="border-b border-white/10 px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <Link
+                        href={chatSearchQuery ? `/chat?q=${encodeURIComponent(chatSearchQuery)}` : '/chat'}
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/15 bg-white/[0.03] text-slate-200 transition-colors hover:bg-white/[0.08] md:hidden"
+                      >
+                        <ArrowLeft className="h-4 w-4" />
+                      </Link>
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-300/85 to-orange-300/70 text-sm font-semibold text-black">
+                        {getAvatarInitial(selectedPartnerName)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-slate-100">{selectedPartnerName}</p>
+                        <p
+                          className={`text-[11px] ${
+                            isPartnerTyping
+                              ? 'text-emerald-300'
+                              : partnerOnlineCount > 0
+                                ? 'text-emerald-400'
+                                : 'text-slate-500'
+                          }`}
+                        >
+                          {isPartnerTyping ? '입력 중...' : partnerOnlineCount > 0 ? '온라인' : '오프라인'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    ref={messageViewportRef}
+                    className="flex-1 overflow-y-auto bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0))] px-3 py-3"
+                  >
+                    {reachedMessageLimit ? (
+                      <p className="mb-3 text-center text-[11px] text-slate-500">
+                        최근 {chatMessagesLimit}개 메시지만 표시됩니다.
+                      </p>
+                    ) : null}
+                    <div className="space-y-2.5">
+                      {filteredMessages.length > 0 ? (
+                        filteredMessages.map((message) => {
+                          const profile = Array.isArray(message.profiles) ? message.profiles[0] : message.profiles;
+                          const mine = message.sender_id === userId;
+                          const isSending = message.delivery_status === 'sending';
+                          const isFailed = message.delivery_status === 'failed';
+
+                          return (
+                            <div
+                              key={message.client_id || message.id}
+                              data-chat-message-id={message.id}
+                              className={`flex ${mine ? 'justify-end' : 'justify-start'}`}
+                            >
+                              <div
+                                className={`max-w-[84%] rounded-2xl px-3 py-2.5 ${
+                                  mine
+                                    ? isFailed
+                                      ? 'border border-red-500/60 bg-red-500/10 text-red-100'
+                                      : isSending
+                                        ? 'border border-white/30 bg-white/85 text-black'
+                                        : 'bg-white text-black'
+                                    : 'border border-white/12 bg-white/[0.04] text-slate-100'
+                                }`}
+                              >
+                                <p className="mb-0.5 text-[11px] opacity-80">
+                                  {mine ? '나' : profile?.username || '상대방'}
+                                </p>
+                                <p className="whitespace-pre-wrap break-words text-sm">{message.content}</p>
+                                <div className="mt-1 flex items-center gap-1 text-[10px] opacity-75">
+                                  <span>{formatMessageTime(message.created_at)}</span>
+                                  {mine ? (
+                                    isFailed ? (
+                                      <span>• 전송 실패</span>
+                                    ) : isSending ? (
+                                      <span className="inline-flex items-center gap-1">
+                                        • <Loader2 className="h-3 w-3 animate-spin" /> 전송 중
+                                      </span>
+                                    ) : message.read_at ? (
+                                      <span className="inline-flex items-center gap-1">
+                                        • <Check className="h-3 w-3" /> 읽음 {formatMessageTime(message.read_at)}
+                                      </span>
+                                    ) : (
+                                      <span>• 전송됨</span>
+                                    )
+                                  ) : null}
+                                </div>
+                                {mine && isFailed && message.client_id ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      void retryFailedMessage(message.chat_id, message.client_id!);
+                                    }}
+                                    className="mt-1 inline-flex items-center rounded-lg border border-red-400/50 px-2 py-0.5 text-[10px] font-medium text-red-100 hover:bg-red-500/20"
+                                  >
+                                    재전송
+                                  </button>
+                                ) : null}
+                              </div>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <p className="py-10 text-center text-sm text-slate-500">
+                          {chatSearchQuery ? '검색된 메시지가 없습니다.' : '아직 메시지가 없습니다.'}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <ChatComposer
+                    chatId={selectedChatId}
+                    onSend={handleComposerSend}
+                    onTypingChange={handleTypingChange}
+                  />
+                </>
+              ) : (
+                <div className="flex flex-1 items-center justify-center text-sm text-slate-500">
+                  채팅방을 선택해주세요.
+                </div>
+              )}
+            </section>
+          </div>
         </main>
       ) : (
         <main className="px-4 py-16 text-center space-y-3 animate-imfencer-fade-up">
